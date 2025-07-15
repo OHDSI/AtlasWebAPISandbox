@@ -24,7 +24,7 @@ public class CacheTest {
 	@Autowired
 	private UserService userService;
 
-	@Autowired
+	@Autowired(required = false)
 	private CacheManager cacheManager	;
 
 	@Autowired
