@@ -1,20 +1,64 @@
+# Default configuration
 spring:
   application:
     name: actdemo
+  profiles:
+    active: default
 
+---
+# Configuration for info
+spring:
+  config:
+    activate:
+      on-profile: info
+name: info-YAML
 management:
   endpoints:
     web:
       exposure:
-        include: "*"
+        include: health,info
   info:
+    build: { enabled: true }
     env: { enabled: true }
     java: { enabled: true }
     os: { enabled: true }
+    git:
+      enabled: true
+      mode: full
 
 info:
   app:
     name: @project.name@
     description: @description@
     version: @version@
+    actuator-scope: this profile enables health and info
+    custom-property: put value here
+
+---
+# Configuration for all
+spring:
+  config:
+    activate:
+      on-profile: all
+name: all-YAML
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  info:
+    build: { enabled: true }
+    env: { enabled: true }
+    java: { enabled: true }
+    os: { enabled: true }
+    git:
+      enabled: true
+      mode: full
+
+info:
+  app:
+    name: @project.name@
+    description: @description@
+    version: @version@
+    actuator-scope: this profile enables all actuator endpoints
     custom-property: put value here
