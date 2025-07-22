@@ -59,13 +59,19 @@ To ensure consistent builds across different environments, we included the [Mave
 
 ## Debugging
 
-To enable interactive debugging within NetBeans, we customized the project's run configuration by adding specific JVM arguments to the debug action. This included enabling the JDWP agent with parameters like -Xdebug -Xrunjdwp:transport=dt_socket,server=n,address=${jpda.address} to allow the debugger to attach on a known port. Additionally, to support Spring Boot's behavior and allow smooth reloads and profiling, we configured properties such as spring-boot.run.jvmArguments to pass these flags through the Maven spring-boot:run goal. This setup ensured we could set breakpoints and inspect the application in real time while still supporting hot reload and reproducible behavior within the IDE.
+To enable interactive debugging within NetBeans, we customized the project's run configuration by adding specific JVM arguments to the debug action. This included enabling the JDWP agent with parameters like `-Xdebug -Xrunjdwp:transport=dt_socket,server=n,address=${jpda.address}` to allow the debugger to attach on a known port. Additionally, to support Spring Boot's behavior and allow smooth reloads and profiling, we configured properties such as spring-boot.run.jvmArguments to pass these flags through the Maven spring-boot:run goal. This setup ensured we could set breakpoints and inspect the application in real time while still supporting hot reload and reproducible behavior within the IDE.
+
+Specifically for NetBeans, the Debug action was configured to execute goal `spring-boot:run` with properties:
+```
+spring-boot.run.jvmArguments=-Xdebug -Xrunjdwp:transport=dt_socket,server=n,address=${jpda.address}
+jpda.listen=true
+```
 
 Similar steps would be taken in VS Code to launch the process with the necessary debug hooks.
 
 ## Hot Reload
 
-Hot reloading was made possible by configuring NetBeans with "Compile on Save" enabled, which triggers class recompilation directly into the target/classes directory. Spring Boot's DevTools or file-watching mechanism observes this directory and automatically reloads the application context when changes are detected. While this setup greatly accelerates development, it introduced a problem: the embedded Postgres instance (managed by PgHolder) was being repeatedly restarted with every reload. The root cause was that the embedded database class was located within the Spring Boot application's classpath, causing it to reload alongside the main application. To resolve this, we externalized the PG management logic into a separate library. The Spring Boot app no longer directly references PgHolder; instead, JDBC connection information is passed via system properties. The library retrieves and sets these using System.getProperty() and System.setProperty() calls. This separation ensures that the embedded Postgres instance remains initialized only once, regardless of how often the Spring container restarts.
+Hot reloading was made possible by configuring NetBeans with "Compile on Save" enabled, which triggers class recompilation directly into the target/classes directory. Spring Boot's DevTools or file-watching mechanism observes this directory and automatically reloads the application context when changes are detected. While this setup greatly accelerates development, it introduced a problem: the embedded Postgres instance (managed by `PgHolder`) was being repeatedly restarted with every reload. The root cause was that the embedded database class was located within the Spring Boot application's classpath, causing it to reload alongside the main application. To resolve this, we externalized the PG management logic into a separate library. The Spring Boot app no longer directly references PgHolder; instead, JDBC connection information is passed via system properties. The library retrieves and sets these using `System.getProperty()` and `System.setProperty()` calls. This separation ensures that the embedded Postgres instance remains initialized only once, regardless of how often the Spring container restarts.
 
 ## Spring Actuators
 
@@ -83,3 +89,16 @@ Since this doesn't seem to incur significant overhead to the buld times or runti
 
 The core purpose of the demo application (aside from the JDK21 and Flyway migration) is to expose a simple REST endpoint using Spring Boot that echoes back a message provided as a URL parameter. Spring Boot streamlines the development of web applications by auto-configuring the underlying framework and embedding a servlet container, allowing developers to focus on writing minimal boilerplate code. In this case, a single controller class was defined using the @RestController annotation to handle incoming HTTP GET requests. The controller maps a route `/echo` and reads a query parameter named `message`. When accessed, the endpoint simply returns the value of that message parameter as the HTTP response body. This kind of controller is useful for validating connectivity, exploring request handling, or serving as a foundation for more advanced behavior.
 
+For Spring annotations, we are using the `RestController`, `RequestMapping` and `GetMapping` Spring REST annotations to associate the HTTP path to the controller method:
+
+```
+@RestController
+@RequestMapping("/")
+public class EchoController {
+
+	@GetMapping("/echo")
+	public String echo(String message) {
+		return "echo: " + message;
+	}
+}
+```
