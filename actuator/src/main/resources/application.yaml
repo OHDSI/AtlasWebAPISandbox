@@ -3,7 +3,7 @@ spring:
   application:
     name: actdemo
   profiles:
-    active: default
+    active: all
 
 ---
 # Configuration for info
@@ -42,6 +42,13 @@ spring:
       on-profile: all
 name: all-YAML
 management:
+  endpoint:
+    env:
+      # Spring (by default) will not display values - so tell it to do so
+      show-values: ALWAYS
+    configprops:
+      # Spring (by default) will not display values - so tell it to do so
+      show-values: ALWAYS
   endpoints:
     web:
       exposure:
