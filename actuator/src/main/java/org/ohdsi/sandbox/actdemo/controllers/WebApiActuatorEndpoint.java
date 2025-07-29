@@ -9,8 +9,6 @@ import java.util.HashMap;
 @Component
 @Endpoint(id="webapi")
 public class WebApiActuatorEndpoint {
-	private HashMap<String,String> webApiInfo = new HashMap<>();
-
 	@ReadOperation
 	public HashMap<String,String> getWebApiInfo() {
 		// Actuator info for WebAPI consists of key-value pairs.  This demo doesn't
