@@ -49,12 +49,4 @@ public class WebAPIStarterConfig {
 						.dataSource(dataSource)
 						.load();
 	}
-
-	@Bean
-	public ExitCodeGenerator exitCodeGenerator() {
-		return () -> {
-			System.out.println(">>> ExitCodeGenerator triggered");
-			return 0;
-		};
-	}
 }

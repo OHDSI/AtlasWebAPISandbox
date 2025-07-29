@@ -1,18 +1,17 @@
 package org.ohdsi.sandbox.WebAPIStarterDemo;
 
-import com.opentable.db.postgres.embedded.EmbeddedPostgres;
 import org.junit.jupiter.api.Test;
-import org.ohdsi.sandbox.pgembed.PgHolder;
+import org.ohdsi.sandbox.pgembed.EmbeddedPostgresExtension.WithEmbeddedPostgres;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+@SpringBootTest(classes = {EmbeddedPostgresTestConfig.class},
+				properties = "spring.main.allow-bean-definition-overriding=true")
+@WithEmbeddedPostgres(port = 15436)
 class WebApiStarterDemoApplicationTests {
-	static {
-		EmbeddedPostgres pg = PgHolder.getPostgres(); // this will init PG outside of spring reloaded class loader
-	}
-	
+
 	@Test
 	void contextLoads() {
+		// the actual test here is that the spring container launches
 	}
 
 }

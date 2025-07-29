@@ -1,37 +1,42 @@
 package org.ohdsi.sandbox.WebAPIStarterDemo;
 
-import org.ohdsi.sandbox.pgembed.PgHolder;
 import com.opentable.db.postgres.embedded.EmbeddedPostgres;
-import java.security.Permission;
-import java.util.Arrays;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import java.util.Optional;
+import org.ohdsi.sandbox.pgembed.PGFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 public class WebApiStarterDemoApplication {
 
-	private static void debugExitSetup() {
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			System.out.println(">>> JVM Shutdown Hook Triggered");
+	private static void initDB() {
+		// for demo purposes, we will launch the embedded PG prior to launching the spring app
+		PGFactory.Options options = new PGFactory.Options();
+		options.port = Optional.of(15436);
+		EmbeddedPostgres postgres = PGFactory.createEmbeddedPostgres(options);
 
-			System.out.println(">>> Capturing thread dump:");
-			Thread.getAllStackTraces().forEach((t, s) -> {
-				System.out.println("Thread: " + t.getName());
-				for (StackTraceElement ste : s) {
-					System.out.println("  at " + ste);
-				}
-			});
+		// set system params to init datasource beans from
+		String url = "jdbc:postgresql://localhost:" + postgres.getPort() + "/postgres";
+		System.setProperty("sandbox.url", url);
+		System.setProperty("sandbox.username", "postgres");
+		System.setProperty("sandbox.password", "");
+		System.setProperty("sandbox.driver-class-name", "org.postgresql.Driver");
 
-			System.out.println(">>> JVM is shutting down. Check for System.exit() or fatal exceptions.");
-		}));
-
+		// create a default schema for this demo
+		try (Connection conn = DriverManager.getConnection(url, "postgres", "postgres"); Statement stmt = conn.createStatement()) {
+			stmt.execute("CREATE SCHEMA IF NOT EXISTS webapi_sandbox;");
+			System.out.println("Schema webapi_sandbox created.");
+		}
+		catch (Exception e) {
+			throw new RuntimeException("Failed to create webapi_sandbox schema", e);
+		}
 	}
 
 	public static void main(String[] args) {
-		//debugExitSetup();
-		// for demo purposes, we will launch the embedded PG prior to launching the spring app
-		EmbeddedPostgres pg = PgHolder.getPostgres(); // this will init PG outside of spring reloaded class loader
-
+		initDB();
 		SpringApplication.run(WebApiStarterDemoApplication.class, args);
 	}
 }
