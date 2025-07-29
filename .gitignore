@@ -1,6 +1,4 @@
 Makefile
-WebAPIConfig/
-*application.properties
 .idea/
 .metadata/
 *.iml
@@ -11,7 +9,7 @@ target/
 .project
 nb-configuration.xml
 nbactions*.xml
-*~
+.*~
 .DS_Store
 .factorypath
 
