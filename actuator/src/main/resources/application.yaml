@@ -49,6 +49,8 @@ management:
     configprops:
       # Spring (by default) will not display values - so tell it to do so
       show-values: ALWAYS
+    prometheus:
+      access: unrestricted
   endpoints:
     web:
       exposure:
@@ -61,7 +63,6 @@ management:
     git:
       enabled: true
       mode: full
-
 info:
   app:
     name: @project.name@
