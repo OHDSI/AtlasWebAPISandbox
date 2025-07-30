@@ -13,6 +13,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class WebApiStarterDemoApplication {
 
 	private static void initDB() {
+		
+		if ("true".equals(System.getProperty("sandbox.initalized"))) return;
+		
 		// for demo purposes, we will launch the embedded PG prior to launching the spring app
 		PGFactory.Options options = new PGFactory.Options();
 		options.port = Optional.of(15436);
@@ -24,6 +27,7 @@ public class WebApiStarterDemoApplication {
 		System.setProperty("sandbox.username", "postgres");
 		System.setProperty("sandbox.password", "");
 		System.setProperty("sandbox.driver-class-name", "org.postgresql.Driver");
+		System.setProperty("sandbox.initalized", "true");
 
 		// create a default schema for this demo
 		try (Connection conn = DriverManager.getConnection(url, "postgres", "postgres"); Statement stmt = conn.createStatement()) {
