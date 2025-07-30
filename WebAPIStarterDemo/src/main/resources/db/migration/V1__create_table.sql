@@ -1,0 +1,4 @@
+CREATE TABLE ${schemaName}.test_table_1 (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100)
+);
