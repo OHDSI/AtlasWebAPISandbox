@@ -2,7 +2,6 @@ Makefile
 .idea/
 .metadata/
 *.iml
-sandbox/
 target/
 .settings
 .classpath
