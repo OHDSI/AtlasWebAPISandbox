@@ -1,15 +1,10 @@
 package org.ohdsi.sandbox.secdemo;
 
-import java.util.HashMap;
-import java.util.Map;
-import org.flywaydb.core.Flyway;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import javax.sql.DataSource;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.ExitCodeGenerator;
-import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 /**
  * The main configuration for datasources and Flyway migration.

@@ -5,9 +5,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/")
+@RequestMapping("/cohortdefinition")
 public class CohortDefinitionController {
-	@GetMapping("/echo")
+	@GetMapping("/")
 	public String echo(String message) {
 		return "echo: " + message;
 	}
