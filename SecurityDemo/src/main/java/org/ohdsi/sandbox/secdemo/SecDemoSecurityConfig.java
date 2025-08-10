@@ -20,7 +20,7 @@ public class SecDemoSecurityConfig {
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests((requests) -> requests
                 .requestMatchers("/cohortdefinition").authenticated()
-                );
+                .requestMatchers("/notices").permitAll());
         http.formLogin(withDefaults());
         http.httpBasic(withDefaults());
         return http.build();
@@ -30,7 +30,7 @@ public class SecDemoSecurityConfig {
     public UserDetailsService userDetailsService() {
         // Two users.  Shows password encoder patterns {noop} - no encoding,
         // and {bcrypt} which the current state of the art
-        var user = User.withUsername("app1").password("{noop}ohdsi").authorities("read").build();
+        var user = User.withUsername("user").password("{noop}Jumping-Java-00").authorities("read").build();
 
         // Since this is a demo, password is Super-Duper-85$
         var admin = User.withUsername("admin")

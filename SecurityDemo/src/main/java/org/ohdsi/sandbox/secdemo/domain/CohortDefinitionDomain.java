@@ -3,6 +3,21 @@ package org.ohdsi.sandbox.secdemo.domain;
 // The CohortDefinition domain object (not an entity, it knows nothing about
 // persistence technology).
 public class CohortDefinitionDomain {
+    public CohortDefinitionDomain() {}
+
+    public CohortDefinitionDomain(
+            Long id,
+            String name,
+            String description,
+            ExpressionType expressionType,
+            UserDomain createdBy) {
+        setId(id);
+        setName(name);
+        setDescription(description);
+        setExpressionType(expressionType);
+        setCreatedBy(createdBy);
+    }
+
     private Long id;
     private String name;
     private String description;

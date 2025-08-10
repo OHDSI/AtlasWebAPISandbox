@@ -3,6 +3,13 @@ package org.ohdsi.sandbox.secdemo.domain;
 import org.springframework.util.StringUtils;
 
 public class UserDomain {
+    public UserDomain() {}
+
+    public UserDomain(Long id, String username) {
+        setId(id);
+        setUsername(username);
+    }
+
     private Long id;
     private String username;
 
