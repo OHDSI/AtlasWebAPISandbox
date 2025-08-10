@@ -124,14 +124,6 @@ info:
 spring:
   application:
     name: secdemo
-  jpa:
-    show-sql: false
-    properties:
-      hibernate:
-        generate_statistics: false
-        jdbc:
-          batch_size: 200
-        order_inserts: true
   main:
     banner-mode: off
 
@@ -140,6 +132,10 @@ spring:
 logging:
   level:
     root: info
+    org:
+      springframework:
+        security: TRACE
+
 
 # Server
 # -------------------------------------------------------------------------------

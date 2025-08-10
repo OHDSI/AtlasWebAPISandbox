@@ -30,23 +30,4 @@ public class SecDemoConfig {
 		ds.setPassword(System.getProperty("sandbox.password"));
 		return ds;
 	}
-
-	@Bean(name = "flywayDataSource")
-	public DataSource flywayDataSource() {
-		return dataSource();
-	}
-
-	@Bean(initMethod = "migrate")
-	public Flyway flyway(@Qualifier("flywayDataSource") DataSource dataSource) {
-
-		Map<String, String> placeholders = new HashMap<>();
-		placeholders.put("schemaName", "webapi_sandbox");
-
-		return Flyway.configure()
-						.schemas("webapi_sandbox")
-						.placeholders(placeholders)
-						.locations("classpath:db/migration")
-						.dataSource(dataSource)
-						.load();
-	}
 }
