@@ -89,7 +89,19 @@ management:
     web:
       base-path: /actuator
       exposure:
+        # Not a good idea in production, for this demo allow all.
         include: "*"
+  endpoint:
+    env:
+      # Spring (by default) will not display values - so tell it to do so
+      show-values: ALWAYS
+    configprops:
+      # Spring (by default) will not display values - so tell it to do so
+      show-values: ALWAYS
+    prometheus:
+      access: unrestricted
+    shutdown:
+      enabled: true
   info:
     env:
       enabled: true
@@ -107,9 +119,7 @@ info:
       name: ${source.cdm}
       version: ${cdm.version}
 
-# TODO need to move some of these into webapi and then adjust code to set
-#      the appropriate spring/jpa settings when the datasource is created
-# Data source for WebAPI's internal database (not CDM).
+# Spring
 # -------------------------------------------------------------------------------
 spring:
   application:
@@ -136,4 +146,4 @@ logging:
 server:
   port: 8080
   servlet:
-    context-path: /SecDemo
+    context-path: /WebAPI
