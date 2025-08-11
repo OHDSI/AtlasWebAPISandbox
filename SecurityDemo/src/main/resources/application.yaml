@@ -1,0 +1,12 @@
+webapi:
+  security:
+    # Values are DegradedSecurity (for anonymous access) and RegularSecurity.
+    provider: DegradedSecurity
+
+spring:
+  application:
+    name: secdemo
+
+logging:
+  level:
+    org.springframework.security: TRACE

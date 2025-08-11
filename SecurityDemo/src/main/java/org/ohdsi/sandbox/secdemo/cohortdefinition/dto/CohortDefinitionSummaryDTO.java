@@ -1,6 +1,6 @@
 package org.ohdsi.sandbox.secdemo.cohortdefinition.dto;
 
-public record CohortDefinitionMetadataDTO(
+public record CohortDefinitionSummaryDTO(
         Long id,
         String name,
         String description,

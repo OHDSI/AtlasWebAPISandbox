@@ -1,7 +1,7 @@
 package org.ohdsi.sandbox.secdemo.cohortdefinition;
 
-import org.ohdsi.sandbox.secdemo.cohortdefinition.converter.CohortDefinitionDomainToCohortDefinitionMetadataDTO;
-import org.ohdsi.sandbox.secdemo.cohortdefinition.dto.CohortDefinitionMetadataDTO;
+import org.ohdsi.sandbox.secdemo.cohortdefinition.converter.CohortDefinitionDomainToCohortDefinitionSummaryDTO;
+import org.ohdsi.sandbox.secdemo.cohortdefinition.dto.CohortDefinitionSummaryDTO;
 import org.ohdsi.sandbox.secdemo.domain.CohortDefinitionDomain;
 import org.ohdsi.sandbox.secdemo.domain.ExpressionType;
 import org.ohdsi.sandbox.secdemo.domain.UserDomain;
@@ -15,9 +15,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/")
 public class CohortDefinitionController {
-	// Return a list of metadata about all cohort definitions
+	// Return all cohort definition summaries
 	@GetMapping("/cohortdefinition")
-	public List<CohortDefinitionMetadataDTO> getCohortDefinitionList() {
+	public List<CohortDefinitionSummaryDTO> getCohortDefinitionList() {
 		// TODO get defs
 		var defs = new ArrayList<CohortDefinitionDomain>();
 		var d = new CohortDefinitionDomain(
@@ -29,7 +29,7 @@ public class CohortDefinitionController {
 		defs.add(d);
 
 		var dtos = defs.stream()
-				.map(CohortDefinitionDomainToCohortDefinitionMetadataDTO::convert).toList();
+				.map(CohortDefinitionDomainToCohortDefinitionSummaryDTO::convert).toList();
 		return dtos;
 	}
 }
