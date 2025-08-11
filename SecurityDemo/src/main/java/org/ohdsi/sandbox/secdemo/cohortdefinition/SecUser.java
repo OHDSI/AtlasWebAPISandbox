@@ -1,11 +1,11 @@
-package org.ohdsi.sandbox.secdemo.domain;
+package org.ohdsi.sandbox.secdemo.cohortdefinition;
 
 import org.springframework.util.StringUtils;
 
-public class UserDomain {
-    public UserDomain() {}
+public class SecUser {
+    public SecUser() {}
 
-    public UserDomain(Long id, String username) {
+    public SecUser(Long id, String username) {
         setId(id);
         setUsername(username);
     }

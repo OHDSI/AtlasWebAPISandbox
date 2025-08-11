@@ -1,16 +1,14 @@
-package org.ohdsi.sandbox.secdemo.domain;
+package org.ohdsi.sandbox.secdemo.cohortdefinition;
 
-// The CohortDefinition domain object (not an entity, it knows nothing about
-// persistence technology).
-public class CohortDefinitionDomain {
-    public CohortDefinitionDomain() {}
+public class CohortDefinition {
+    public CohortDefinition() {}
 
-    public CohortDefinitionDomain(
+    public CohortDefinition(
             Long id,
             String name,
             String description,
             ExpressionType expressionType,
-            UserDomain createdBy) {
+            SecUser createdBy) {
         setId(id);
         setName(name);
         setDescription(description);
@@ -22,7 +20,7 @@ public class CohortDefinitionDomain {
     private String name;
     private String description;
     private ExpressionType expressionType;
-    private UserDomain createdBy;
+    private SecUser createdBy;
 
     public Long getId() {
         return id;
@@ -62,11 +60,11 @@ public class CohortDefinitionDomain {
         this.expressionType = expressionType;
     }
 
-    public UserDomain getCreatedBy() {
+    public SecUser getCreatedBy() {
         return createdBy;
     }
 
-    public void setCreatedBy(UserDomain createdBy) {
+    public void setCreatedBy(SecUser createdBy) {
         this.createdBy = createdBy;
     }
 }

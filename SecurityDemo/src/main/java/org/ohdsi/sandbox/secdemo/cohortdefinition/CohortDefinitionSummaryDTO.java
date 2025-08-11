@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.secdemo.cohortdefinition.dto;
+package org.ohdsi.sandbox.secdemo.cohortdefinition;
 
 public record CohortDefinitionSummaryDTO(
         Long id,

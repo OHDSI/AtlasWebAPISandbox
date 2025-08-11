@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.secdemo.domain;
+package org.ohdsi.sandbox.secdemo.cohortdefinition;
 
 public enum ExpressionType {
     SIMPLE_EXPRESSION,

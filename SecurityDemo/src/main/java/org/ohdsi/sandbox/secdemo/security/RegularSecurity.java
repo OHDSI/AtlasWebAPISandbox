@@ -20,7 +20,7 @@ public class RegularSecurity {
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests((requests) -> requests
                 .requestMatchers("/cohortdefinition").authenticated()
-                .requestMatchers("/notices").permitAll());
+                .anyRequest().permitAll());
         http.formLogin(withDefaults());
         http.httpBasic(withDefaults());
         return http.build();
@@ -39,7 +39,7 @@ public class RegularSecurity {
         return new InMemoryUserDetailsManager(user, admin);
     }
 
-    // The delegating password encoder is new to Spring 5.  It uses the prefix to find
+    // The delegating password encoder is new to Spring Security 5.  It uses the prefix to find
     // the appropriate encoder.
     @Bean
     public PasswordEncoder passwordEncoder() {

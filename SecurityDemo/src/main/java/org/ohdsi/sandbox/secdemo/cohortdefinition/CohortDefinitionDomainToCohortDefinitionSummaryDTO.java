@@ -1,10 +1,7 @@
-package org.ohdsi.sandbox.secdemo.cohortdefinition.converter;
-
-import org.ohdsi.sandbox.secdemo.cohortdefinition.dto.CohortDefinitionSummaryDTO;
-import org.ohdsi.sandbox.secdemo.domain.CohortDefinitionDomain;
+package org.ohdsi.sandbox.secdemo.cohortdefinition;
 
 public class CohortDefinitionDomainToCohortDefinitionSummaryDTO {
-    public static CohortDefinitionSummaryDTO convert(CohortDefinitionDomain source) {
+    public static CohortDefinitionSummaryDTO convert(CohortDefinition source) {
         var target = new CohortDefinitionSummaryDTO(
                 source.getId(),
                 source.getName(),
