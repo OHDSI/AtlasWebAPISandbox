@@ -9,14 +9,14 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @Primary
-@ConditionalOnProperty(name = "webapi.security.provider", havingValue = "DegradedSecurity")
-public class DegradedSecurity {
+@ConditionalOnProperty(name = "webapi.security.mode", havingValue = "anonymous-user")
+public class AnonymousUserSecurityMode {
     @Bean
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http
                 .anonymous(a -> a.principal("bob").authorities("xyzzy"))
                 .authorizeHttpRequests((requests) -> requests
-                .requestMatchers("/userpermissions/**").denyAll()
+                .requestMatchers("/permissions/**").denyAll()
                 .anyRequest().anonymous());
         return http.build();
     }

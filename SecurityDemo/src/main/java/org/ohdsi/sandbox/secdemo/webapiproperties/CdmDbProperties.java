@@ -1,18 +1,12 @@
 package org.ohdsi.sandbox.secdemo.webapiproperties;
 
-import jakarta.validation.constraints.NotBlank;
-
 public class CdmDbProperties {
-    @NotBlank(message = "webapi.cdm-db.dialect must have a value")
     private String dialect;
 
-    @NotBlank(message = "webapi.cdm-db.jdbc-template-suppress-api-exceptions must have a value")
     private Boolean jdbcTemplateSuppressApiExceptions;
 
-    @NotBlank(message = "webapi.cdm-db.name must have a value")
     private String name;
 
-    @NotBlank(message = "webapi.cdm-db.version must have a value")
     private String version;
 
     public String getDialect() {return dialect;}

@@ -15,9 +15,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
-@ConditionalOnProperty(name = "webapi.security.provider", havingValue = "RegularSecurity")
+@ConditionalOnProperty(name = "webapi.security.mode", havingValue = "regular")
 @EnableMethodSecurity
-public class RegularSecurity {
+public class RegularSecurityMode {
     @Bean
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests((requests) -> requests

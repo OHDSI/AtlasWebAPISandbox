@@ -70,7 +70,7 @@ webapi:
     # If it is set to false, WebAPI will filter out the artifacts that a user does not explicitly have
     # read permissions to
     default-global-read-permissions: true
-    mode: regular
+    mode: anonymous-user
     origin: "*"
   tag:
     enabled: true

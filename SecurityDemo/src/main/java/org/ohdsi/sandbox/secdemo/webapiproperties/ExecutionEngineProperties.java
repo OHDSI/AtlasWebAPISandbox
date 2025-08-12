@@ -1,23 +1,17 @@
 package org.ohdsi.sandbox.secdemo.webapiproperties;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
-import org.hibernate.validator.constraints.URL;
 
 public class ExecutionEngineProperties {
-    @NotBlank(message="webapi.execution-engine.invalidation-enabled cannot be blank")
     Boolean invalidationEnabled;
 
-    @Positive(message="webapi.execution-engine.invalidation-max-age-hours must be positive")
     private Integer invalidationMaxAgeHours;
 
-    @Positive(message="webapi.execution-engine.invalidation-period-ms must be positive")
     private Integer invalidationPeriodMs;
 
     @Positive(message="webapi.execution-engine.max-zip-volume-size-mb must be positive")
     private Integer maxZipVolumeSizeMb;
 
-    @URL(message="webapi.execution-engine.result-callback-url must be a valid URL")
     private String resultCallbackUrl;
 
     // This can be blank.  If a value is present, it is a comma-separated list of Ant path patterns
@@ -27,13 +21,10 @@ public class ExecutionEngineProperties {
     @Positive(message="webapi.execution-engine.status-period-ms must be positive")
     private String statusPeriodMs;
 
-    @NotBlank(message="webapi.execution-engine.token cannot be blank")
     private String token;
 
-    @URL(message="webapi.execution-engine.update-status-callback-url must be a valid URL")
     private String updateStatusCallbackUrl;
 
-    @URL(message="webapi.execution-engine.url must be a valid URL")
     private String url;
 
     public Boolean getInvalidationEnabled() {

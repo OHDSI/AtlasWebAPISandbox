@@ -1,10 +1,8 @@
 package org.ohdsi.sandbox.secdemo.webapiproperties;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 
 public class TagProperties {
-    @NotBlank(message="tag-config.enabled must have a value")
     private Boolean enabled;
 
     @Positive(message="tag-config.refresh-stat-period-ms must be integer value > 0")

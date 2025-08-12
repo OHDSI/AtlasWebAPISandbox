@@ -1,30 +1,21 @@
 package org.ohdsi.sandbox.secdemo.webapiproperties;
 
-import jakarta.validation.constraints.NotBlank;
-
 public class AuthDbProperties {
-    @NotBlank(message = "auth-db.authentication-query cannot be blank")
     private String authenticationQuery;
-    
-    @NotBlank(message = "auth-db.dialect cannot be blank")
+
     private String dialect;
 
-    @NotBlank(message = "auth-db.driver-class-name cannot be blank")
     private String driverClassName;
 
-    @NotBlank(message = "auth-db.password cannot be blank")
     private String password;
 
-    @NotBlank(message = "auth-db.schemaName cannot be blank")
     private String schemaName;
 
     // Ideally we could create a custom "JDBC URL" annotation.  The stock
     // URL validator (from Hibernate) will not work because it can't handle
     // the leading jdbc: stuff.
-    @NotBlank(message = "auth-db.url cannot be blank")
     private String url;
 
-    @NotBlank(message = "auth-db.username cannot be blank")
     private String username;
 
     public String getAuthenticationQuery() {

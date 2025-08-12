@@ -1,7 +1,6 @@
 package org.ohdsi.sandbox.secdemo.webapiproperties;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
@@ -18,7 +17,6 @@ public class CdmResultsProperties {
     @NestedConfigurationProperty
     public CdmResultsCronProperties cron = new CdmResultsCronProperties();
 
-    @NotBlank(message="webapi.cdm-results.enable-cache-warming must have a value")
     Boolean enableCacheWarming;
 
     @Positive(message="webapi.cdm-results.jobs-count must be a positive integer")

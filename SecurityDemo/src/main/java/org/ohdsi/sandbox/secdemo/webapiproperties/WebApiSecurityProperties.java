@@ -1,7 +1,6 @@
 package org.ohdsi.sandbox.secdemo.webapiproperties;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
 public class WebApiSecurityProperties {
@@ -13,13 +12,10 @@ public class WebApiSecurityProperties {
     @NestedConfigurationProperty
     private CorsProperties cors = new CorsProperties();
 
-    @NotBlank(message="security.default-global-read-permissions must have a value")
     Boolean defaultGlobalReadPermissions;
 
-    @NotBlank(message="security.mode must have a value")
     String mode;
 
-    @NotBlank(message="security.origin must have a value")
     String origin;
 
     public AuthDbProperties getAuthDb() {
