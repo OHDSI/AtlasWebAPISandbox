@@ -13,7 +13,9 @@ import org.springframework.security.web.SecurityFilterChain;
 public class DegradedSecurity {
     @Bean
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
-        http.authorizeHttpRequests((requests) -> requests
+        http
+                .anonymous(a -> a.principal("bob").authorities("xyzzy"))
+                .authorizeHttpRequests((requests) -> requests
                 .requestMatchers("/userpermissions/**").denyAll()
                 .anyRequest().anonymous());
         return http.build();

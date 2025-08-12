@@ -1,0 +1,22 @@
+
+NOT AUTHENTICATED
+localhost:8080/notices
+
+AUTHENTICATED: either app or admin users
+localhost:8080/cohortdefinition/with_no_authorities
+localhost:8080/cohortdefinition/require_cohortreader_authority_via_code
+localhost:8080/cohortdefinition/require_cohort_reader_authority_via_annotation
+
+requires admin user
+localhost:8080/permissions/create/{authority}
+localhost:8080/permissions
+
+
+USER app
+  pwd: Jumping-Java-00
+  authorities: cohort_reader
+
+USER admin
+  pwd: Super-Duper-85$
+  authorities: admin, cohort_reader, permission_creator, permission_reader
+

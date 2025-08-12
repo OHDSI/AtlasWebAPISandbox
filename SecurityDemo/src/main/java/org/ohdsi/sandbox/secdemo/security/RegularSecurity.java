@@ -3,6 +3,7 @@ package org.ohdsi.sandbox.secdemo.security;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -15,12 +16,21 @@ import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @ConditionalOnProperty(name = "webapi.security.provider", havingValue = "RegularSecurity")
+@EnableMethodSecurity
 public class RegularSecurity {
     @Bean
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests((requests) -> requests
-                .requestMatchers("/cohortdefinition").authenticated()
-                .anyRequest().permitAll());
+                .requestMatchers("/cohortdefinition/with_no_authorities")
+                    .authenticated()
+                .requestMatchers("/cohortdefinition/require_cohortreader_authority_via_code")
+                    .hasAuthority("cohort_reader")
+                .requestMatchers("/cohortdefinition/require_cohort_reader_authority_via_annotation")
+                    .authenticated()
+                .requestMatchers("/permissions/**")
+                    .authenticated()
+                .anyRequest()
+                    .permitAll());
         http.formLogin(withDefaults());
         http.httpBasic(withDefaults());
         return http.build();
@@ -30,12 +40,18 @@ public class RegularSecurity {
     public UserDetailsService userDetailsService() {
         // Two users.  Shows password encoder patterns {noop} - no encoding,
         // and {bcrypt} which the current state of the art
-        var user = User.withUsername("user").password("{noop}Jumping-Java-00").authorities("read").build();
+        var user = User
+                .withUsername("app")
+                .password("{noop}Jumping-Java-00")
+                .authorities("cohort_reader")
+                .build();
 
         // Since this is a demo, password is Super-Duper-85$
-        var admin = User.withUsername("admin")
-                            .password("{bcrypt}$2a$12$imtbrq3VEa0ZPLAnhpCZHeg4Z8Kjj4Cn9kGhyFRGdesEzQMwvvMwK")
-                            .authorities("admin").build();
+        var admin = User
+                .withUsername("admin")
+                .password("{bcrypt}$2a$12$imtbrq3VEa0ZPLAnhpCZHeg4Z8Kjj4Cn9kGhyFRGdesEzQMwvvMwK")
+                .authorities("admin", "cohort_reader", "permission_creator", "permission_reader")
+                .build();
         return new InMemoryUserDetailsManager(user, admin);
     }
 

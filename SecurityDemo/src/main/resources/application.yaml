@@ -1,7 +1,7 @@
 webapi:
   security:
     # Values are DegradedSecurity (for anonymous access) and RegularSecurity.
-    provider: DegradedSecurity
+    provider: RegularSecurity
 
 spring:
   application:
