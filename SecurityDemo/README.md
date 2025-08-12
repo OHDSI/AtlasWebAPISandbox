@@ -46,7 +46,7 @@ Note that both session cookies and JWT are vulnerable to Cross-Site Request Forg
 
 ### WebAPI "Disabled" Security
 
-WebAPI 2.x currently implements a "disabled" security posture, which allows access to most of the REST endpoints.  Shiro configuration is used to prevent access to certain sensitive endpoints, such as those that involve user management (add/change/delete user/role/permission).  
+WebAPI 2.x currently implements a "disabled" security posture, which allows access to most of the REST endpoints.  Shiro configuration is used to prevent access to certain sensitive endpoints, such as those that involve user management (add/change/delete user/role/permission).    So it's not really "disabled"...
 
 WebAPI 3.x (and the sandbox demo) implement a similar capability, using the anonymous user feature of Spring Security.  Anonymous users are not authenticated, but they can follow the pattern provided by Spring Security:
 
@@ -55,7 +55,7 @@ WebAPI 3.x (and the sandbox demo) implement a similar capability, using the anon
 
 This mode of operation is better treated as exclusive to regular authentication - although given Spring Security's flexibility it is possible to configure a mixture, where some endpoints are authenticated and others are accessible without authentication.
 
-The sandbox demo uses the property `webapi.security.provider` to *DegradedSecurity* to demonstrate this mode of operation.
+The sandbox demo uses the property `webapi.security.mode` to *anonymous-user* to demonstrate this mode of operation.
 
 ## Authorization (AuthZ) Overview
 
@@ -69,6 +69,56 @@ The `GrantedAuthority` interface defines a single method - `String getAuthority(
 
 Roles function pretty much the same as in WebAPI 2.x, in that they group together individual authorities (permissions) that are granted to users with those roles.   When *defining* a role, Spring Security expects the prefix "ROLE_".  When testing to see if a user has the role the prefix should not be supplied.
 
-#### Authorities
+#### Authorities Tidbits
 
-No prefix, no specific format.
+* No prefix, no specific format.  Pretty much you can create your own domain specific language.
+* Once a user is authenticated and any roles/authorities have been assigned, no changes are possible.  This is because the `AuthenticationToken` uses an immutable list to store the authorities.
+
+## Demo
+
+### Users
+
+* app: granted authorities `cohort_reader`
+* admin: granted authorities `admin`, `cohort_reader`, `permission_creator`, `permission_reader`
+
+### Endpoints
+
+* `localhost:8080/notices` - not authenticated
+* `localhost:8080/cohortdefinition/with_no_authorities` - an endpoint that requires authentication but no authorities.
+* `localhost:8080/cohortdefinition/require_cohortreader_authority_via_code`. Requires `cohort_reader` authority, and the value is configured in code via an *Ant* pattern matcher.
+* `localhost:8080/cohortdefinition/require_cohort_reader_authority_via_annotation`.  Requires `cohort_reader` authority, and this configured via annotation `@PreAuthorize`
+* `localhost:8080/permissions`. Lists permissions.  Requires `permission_reader` authority.
+* `localhost:8080/permissions/create/{authority}`.  Requires `permission_creator` authority.
+
+Note: these endpoints really don't do a lot.  Usually they just return a string.  The cohort definition one does return a list of fake cohort definition summaries.
+
+### Anonymous-User Mode
+
+Set the property `webapi.security.mode=anonymous-user`.  Run.   An "anonymous user" (with the Adventurous authority *xyzzy* is created by Spring Security).  All endpoints are accessible except `/permissions/**`
+
+### Regular Mode
+
+Set the property `webapi.security.mode=regular`.  Run.  If you try to access an authenticated endpoint you will be sent to a login screen.  Note that only the *admin* user can read and/or create permissions.  Sorry *app* user.
+
+### Limitations
+
+Obviously pretty fakey but trying to communicate the basic concepts.  So no CORS, CRSF, XSS, SSL, https, etc.  Uses session tokens.  JWT implementation, which would be used in production is pretty similar.  Also did not implement "database" authentication, used the much simpler `InMemoryDetailsUserManager` to create the two users.
+
+## Security Expressions
+
+Unlike the current WebApi 2.x, we are not controlling access via endpoint.  Well, we sort of are doing this via Request Matching, but the point is the security expressions for WebApi 3.x will be both more simple and more powerful.  The actual expressions are under development and will incorporate CRUD verbs (read, write (create and update), delete, perhaps list, as well as some other types of actions.  And pretty much any Domain Specific Language can be created .  Some possibilities:
+
+| Expression                                    | Meaning                                                      |
+| --------------------------------------------- | ------------------------------------------------------------ |
+| `read: cohortdefinition: *`                   | Grant authority to read all cohort definitions.              |
+| `read: cohortdefinition: me`                  | Grant authority to read cohort definitions that my user has created. |
+| `type=read, resource=cohortdefinition, id=*`  | The same thing as row 1.  This syntax is pretty compact,  and eliminates separate verbs and resource names.  It also really communicates the intent, better than `read: cohortdefinition: *` IMO. |
+| `type=read, resource=cohortdefinition, id=me` |                                                              |
+| `type=read, resource=cohortdefinition, id=42` | Here a specific entity id is referenced.                     |
+
+Note that the flavors that use specific entity numbers (such as *me* and 42) will require code support and cannot be used in `PreAuthorize` annotations, because the function is not yet in scope.  However the wildcard flavor could be used in @PreAuthorize.
+
+## Breaking Changes
+
+* A conversion program will need to be written to translate from the old style to the new style.
+* Currently, when a user is logged in, WebApi exposes the exact permission strings, which are then used by *Atlas* to control user display and functionality.  This leaks the specific knowledge of how WebAPI manages permissions and is also brittle, in that any changes made in WebAPI will require *Atlas* changes.  Ideally we could expose a generic "map" that could be used by *Atlas*.
