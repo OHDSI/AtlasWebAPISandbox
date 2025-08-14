@@ -1,6 +1,6 @@
 webapi:
   security:
-    mode: anonymous-user
+    mode: regular
 
 spring:
   application:
