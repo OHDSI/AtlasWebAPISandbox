@@ -1,5 +1,6 @@
 Makefile
 .idea/
+.vscode/
 .metadata/
 *.iml
 target/
@@ -16,5 +17,4 @@ nbactions*.xml
 **/resources/config/application*-dev-*.properties
 **/resources/config/application*-dev-*.yaml
 **/resources/config/application*-dev-*.yml
-/.vscode
 /.run
