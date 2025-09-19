@@ -6,6 +6,7 @@ package org.ohdsi.sandbox.pgembed;
 
 import com.opentable.db.postgres.embedded.EmbeddedPostgres;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Optional;
 
 /**
@@ -23,8 +24,9 @@ public abstract class PGFactory {
 		try {
 			int port = options.port.orElse(0);
 			postgres = EmbeddedPostgres.builder()
-							.setPort(port) // 0 = choose a random free port
-							.start();
+				.setPGStartupWait(Duration.ofSeconds(30))
+				.setPort(port) // 0 = choose a random free port
+				.start();
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to start Embedded Postgres", e);
 		}

@@ -1,72 +1,89 @@
 package org.ohdsi.sandbox.auth_windows;
 
-import waffle.servlet.spi.NegotiateSecurityFilterProvider;
-import waffle.servlet.spi.SecurityFilterProvider;
-import waffle.spring.NegotiateSecurityFilter;
-import waffle.spring.WindowsAuthenticationProvider;
-import waffle.windows.auth.IWindowsAuthProvider;
-import waffle.windows.auth.impl.WindowsAuthProviderImpl;
-import waffle.windows.auth.PrincipalFormat;
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
-    @Bean
-    public IWindowsAuthProvider waffleAuthProviderImpl() {
-        return new WindowsAuthProviderImpl();
-    }
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
 
-    @Bean
-    public WindowsAuthenticationProvider windowsAuthenticationProvider(IWindowsAuthProvider impl) {
-        WindowsAuthenticationProvider provider = new WindowsAuthenticationProvider();
-        provider.setAuthProvider(impl);
-        provider.setAllowGuestLogin(false);
+	@Bean
+	public JwtUtil jwtUtil() {
+		return new JwtUtil();
+	}
 
-        // Disable group lookup
-				
-        provider.setPrincipalFormatEnum(PrincipalFormat.SID);
-        provider.setRoleFormatEnum(PrincipalFormat.NONE);
+	@Bean
+	public JwtAuthenticationFilter jwtAuthenticationFilter(AuthenticationManager authenticationManager) {
+		return new JwtAuthenticationFilter(authenticationManager);
+	}
 
-        return provider;
-    }
+	@Bean
+	public UserDetailsService userDetailsService(PasswordEncoder encoder) {
+		var uds = new InMemoryUserDetailsManager();
+		uds.createUser(User.withUsername("alice")
+				.password(encoder.encode("password"))
+				.roles("USER")
+				.build());
+		return uds;
+	}
 
-    @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http,
-            WindowsAuthenticationProvider windowsAuthProvider) throws Exception {
-        return http.getSharedObject(AuthenticationManagerBuilder.class)
-                   .authenticationProvider(windowsAuthProvider)
-                   .build();
-    }
+	// this is the Spring default behavior to create a ProviderManger of all registered AuthenticationProviders, but 
+	// am including it here in case we need special handling for the configuration.
+	// In addition, there should only be one authentication provider to authenticate JWT tokens becuase that's the
+	// canoical authentication context that leads to the security principle in spring security
+	// ie: we do not carry around an OAUth authenticated user, windows authenticated user, etc.
+	// Authentication endpionts lead to minting JWT tokens, which will be used to identify the authenticated user from all the 
+	// different authentication endpints that are enabled.
+	@Bean
+	public AuthenticationManager authenticationManager(List<AuthenticationProvider> providers) {
+		return new ProviderManager(providers);
+	}
 
-    @Bean
-    public NegotiateSecurityFilter negotiateSecurityFilter(IWindowsAuthProvider impl) {
-        NegotiateSecurityFilter filter = new NegotiateSecurityFilter();
-        filter.setProvider(new waffle.servlet.spi.SecurityFilterProviderCollection(
-                new SecurityFilterProvider[] {new NegotiateSecurityFilterProvider(impl)}
-        ));
-        return filter;
-    }
+	@Bean
+	@Order(100)
+	public SecurityFilterChain apiChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
+		http
+				.csrf(AbstractHttpConfigurer::disable)
+				.cors(Customizer.withDefaults())
+				// disable unecessary filters
+				.requestCache(AbstractHttpConfigurer::disable)
+				.sessionManagement(AbstractHttpConfigurer::disable)
+				.logout(AbstractHttpConfigurer::disable)
+				.anonymous(AbstractHttpConfigurer::disable)
+				.formLogin(AbstractHttpConfigurer::disable)
+				.httpBasic(AbstractHttpConfigurer::disable)				// JWT filter tries to authenticate first
+				// Allow ALL requests at the filter level
+				.authorizeHttpRequests(auth -> auth
+						.anyRequest().permitAll())
+				.addFilterBefore(jwtFilter, AnonymousAuthenticationFilter.class)
+				// If JWT didn’t populate SecurityContext, set anonymous
+				.anonymous(anon -> anon
+						.principal("anonymous"));
 
-    // Windows authentication filter chain
-    @Bean
-    SecurityFilterChain windowsAuthFilterChain(HttpSecurity http, NegotiateSecurityFilter negotiateSecurityFilter) throws Exception {
-        http
-            .securityMatcher("/windows/**")       // only match Windows auth endpoints
-            .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
-            .addFilterBefore(negotiateSecurityFilter, AnonymousAuthenticationFilter.class)
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-            .anonymous(an -> an.disable());       // disable anonymous for this chain
-        return http.build();
-    }
-
+		return http.build();
+	}
 }
