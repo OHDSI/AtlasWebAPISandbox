@@ -1,104 +1,214 @@
-# WebAPI Starter Demo
+# Authentication Demo
 
-This sandbox project demonstrates a maven project (with necessary dependencies) for the following setup:
+This sandbox project demonstrates Spring Security authentication with the following dependencies:
 
 - JDK 21
 - Spring Boot 3.5
+- Spring Security 6.5
+- JSON Web Token (JWT)
+- Waffle (for Windows Auth)
 - Tomcat Embed 10.1
-- Flyway 11.7 with 3 migrations
-- Actuator to shutdown the app
-- An echo REST controller
 
-The following sections will provide the details and considerations made when bulding it.
+# Spring Security Concepts
 
-# Technical Details
+The main abstractions contained in Spring Security can be summarized as:
 
-## JDK and Spring Boot
+- **SecurityFilterChain** → request interception pipeline  
+- **AuthenticationManager / AuthenticationProvider** → identity verification  
+- **SecurityContext** → stores the user identity for the current thread  
+- **AccessDecisionManager / Authorization** → rules for access control  
+- **UserDetails / UserDetailsService** → model for user accounts  
+- **PasswordEncoder** → password safety  
 
-I chose to download the JDK 21 from [Adoptium](https://adoptium.net/).  It seems to have active development, current build status, and frequent releases.  
+This project focuses on the first 3: SecurityFilterChain, AuthenticationManager/AuthenticationProvider and SecurityContext.
 
-For Spring Boot, version 3.5, which was initlaly released May 22, 2025.  3.5.3 (which is referenced in this sandbox project) was released June 20th.
+Windows Authentication is provided through Waffle, and this project provides a working implementation (on Windows), while there are place holders for a DB Authentication implementation (not implemented here), and the JWT authentication which follows the model of WebAPI 2.x where JWT tokens are used to identify clients to the server.
 
-## Embedded Postgres
+In addition, although this project focuses on the authentication, there will be an example controller that shows how method-level security (via `@PreAuthorize`) can be applied to methods to do authorization.  But Authorization is beyond the scope of this sandbox.
 
-To make the demo more self-contained, I leveraged Opentable's `otj-pg-embedded` library that spawns a PG instance into a temporary locaton. In order to get the Spring Boot hot-reload to work without starting a new PG instance every save, the `PgHolder` that contains a static reference to a running PG instance in the VM was exported into a stand-alone sandbox project `pg-embed`.  Details about the considerations related to this choice will be discussed in the `Launching Application` section.
+# Class Organization
 
-The DB starts off with a default schema `webapi_sandbox` which can be reerenced in any other sandbox project.   I didn't put enough effort in to make this configurable, but that's something we could put energy into if we wanted.
+Spring Security handles authentication by starting with a SecurityFilterChain that sets up the default filters, and the developer injects custom filters to handle the appropriate authentication type.  So, a typical authentication implementation will have a {AuthType}SecurityConfig (that configures a security chain) and an authentication filter to handle the authentication.  Other classes could be added as needed (such as JwtAuthenticationToken and JwtAuthenticationProvider).
 
-To use this PG holder in your own sandbox, add this dependency:
+Using Windows Authentication as an example:
+- WindowsAuthSecurityConfig → Defines the path to windows authentication, disables unnecessary default filters from Spring Security and injects the WindowsAuthFilter early in the chain.
+- WindowsAuthFilter → Wraps Waffle's NegotiateSecurityFilter (with a WindowsAuthProviderImpl to do the low-level work), and mints a JWT token for the client to use to identify themselves in other endpoints
 
-```
-<dependency>
-  <groupId>org.ohdsi.sandbox</groupId>
-  <artifactId>pg-embed</artifactId>
-  <version>1.0.0</version>
-  <type>jar</type>
-</dependency>
-```
+In summary, the implementation of an authentication implementation should consist of a `{AuthType}Config` file that will set up the `SecurityFilterChain` to the authentication path, and a filter (with zero or more dependent classes) that will handle the actual authentication work.  The filter is injected into the `SecurityFilterChain` via the `{AuthType}Config` class.
 
-And in the `main()` method of your class, you can trigger the load and JVM hooks by accessing the static class:
+# Spring Security SecurityFilterChain Basics
 
-```
-public static void main(String[] args) {
-  //debugExitSetup();
-  // for demo purposes, we will launch the embedded PG prior to launching the spring app
-  EmbeddedPostgres pg = PgHolder.getPostgres(); // this will init PG outside of spring reloaded class loader
+When you declare a **SecurityFilterChain** without disabling defaults, Spring wires in a long list of filters.  
+Some of the important ones (in rough order):
 
-  SpringApplication.run(WebApiStarterDemoApplication.class, args);
-}
-```
+- **WebAsyncManagerIntegrationFilter** → integrates security context with async request handling.  
+- **SecurityContextPersistenceFilter** → loads/saves SecurityContext for each request (from session by default).  
+- **HeaderWriterFilter** → applies security headers (X-Frame-Options, HSTS, etc.).  
+- **CsrfFilter** → checks CSRF tokens (enabled by default for state-changing requests).  
+- **LogoutFilter** → handles logout URL (e.g. `/logout`).  
+- **UsernamePasswordAuthenticationFilter** → looks for username/password form login requests (default login page, `application/x-www-form-urlencoded`).  
+- **DefaultLoginPageGeneratingFilter** → renders a simple HTML login form if you didn’t define one.  
+- **DefaultLogoutPageGeneratingFilter** → renders a simple logout confirmation page.  
+- **BasicAuthenticationFilter** → checks for HTTP Basic auth headers.  
+- **BearerTokenAuthenticationFilter** → checks for `Authorization: Bearer` tokens (if enabled).  
+- **RequestCacheAwareFilter** → remembers original request for redirect after login.  
+- **SecurityContextHolderAwareRequestFilter** → wraps `HttpServletRequest` with methods like `isUserInRole()`.  
+- **AnonymousAuthenticationFilter** → supplies an “anonymous” authentication if nobody is logged in.  
+- **SessionManagementFilter** → handles session concurrency, fixation, etc.  
+- **ExceptionTranslationFilter** → catches security exceptions and translates them to responses (redirects or 403).  
+- **FilterSecurityInterceptor** → final check: enforces access rules.  
 
+👉 The exact set changes depending on which DSL calls you make (`formLogin()`, `httpBasic()`, `oauth2Login()`, etc.).
 
-## Flyway
+The built-in filters cover a lot (CSRF, headers, login/logout, session, tokens, etc.).
 
-Spring boot 3.5.3 referenes Flyway 11.7.  This demo demonstrates 2 SQL and 1 Java migration.  After starting up the app, you can query the `flyway_schema_history` to see the order of applied migrations (and you will see Sql-Java-Sql deployed).
+Form login is a default browser-style login flow (redirects + HTML forms).
 
-## Compiling
+For REST APIs, you typically:
 
-To ensure consistent builds across different environments, we included the [Maven Wrapper](https://maven.apache.org/tools/wrapper/), a small script and set of supporting files that download and use a specific Maven version defined in maven-wrapper.properties. When present, modern IDEs like NetBeans, IntelliJ IDEA, and VS Code automatically detect and prefer the wrapper (./mvnw or mvnw.cmd) over any globally installed Maven version. This eliminates version mismatches and ensures that all developers and CI systems use the same Maven configuration without requiring separate installation steps.
+- Disable form login and anything session/redirect related.
+- Add your own custom authentication filter at a specific URL (like /user/login/db).
+- Return JSON tokens or session IDs, not HTML.
 
-## Debugging
-
-To enable interactive debugging within NetBeans, we customized the project's run configuration by adding specific JVM arguments to the debug action. This included enabling the JDWP agent with parameters like `-Xdebug -Xrunjdwp:transport=dt_socket,server=n,address=${jpda.address}` to allow the debugger to attach on a known port. Additionally, to support Spring Boot's behavior and allow smooth reloads and profiling, we configured properties such as spring-boot.run.jvmArguments to pass these flags through the Maven spring-boot:run goal. This setup ensured we could set breakpoints and inspect the application in real time while still supporting hot reload and reproducible behavior within the IDE.
-
-Specifically for NetBeans, the Debug action was configured to execute goal `spring-boot:run` with properties:
-```
-spring-boot.run.jvmArguments=-Xdebug -Xrunjdwp:transport=dt_socket,server=n,address=${jpda.address}
-jpda.listen=true
-```
-
-Similar steps would be taken in VS Code to launch the process with the necessary debug hooks.
-
-## Hot Reload
-
-Hot reloading was made possible by configuring NetBeans with "Compile on Save" enabled, which triggers class recompilation directly into the target/classes directory. Spring Boot's DevTools or file-watching mechanism observes this directory and automatically reloads the application context when changes are detected. While this setup greatly accelerates development, it introduced a problem: the embedded Postgres instance (managed by `PgHolder`) was being repeatedly restarted with every reload. The root cause was that the embedded database class was located within the Spring Boot application's classpath, causing it to reload alongside the main application. To resolve this, we externalized the PG management logic into a separate library. The Spring Boot app no longer directly references PgHolder; instead, JDBC connection information is passed via system properties. The library retrieves and sets these using `System.getProperty()` and `System.setProperty()` calls. This separation ensures that the embedded Postgres instance remains initialized only once, regardless of how often the Spring container restarts.
-
-## Spring Actuators
-
-During development, an issue arose with the debugging workflow: terminating the debug session in the IDE forcibly killed the process without triggering Spring Boot’s graceful shutdown hooks—or even standard JVM shutdown hooks. As a result, the embedded Postgres instance remained running in memory, orphaned after the JVM was disposed. To address this, Spring Boot’s Actuator module was enabled with the shutdown endpoint exposed. Before stopping the debug session, a curl command could be issued to hit the /actuator/shutdown endpoint, allowing the application to terminate cleanly and trigger all shutdown hooks, including the one managing the Postgres lifecycle. This ensured proper resource cleanup. One tradeoff of this approach was that the shutdown procedure caused InterruptedExceptions to ripple through the application threads, which ultimately led the process to exit with a non-zero status—something to be aware of during automated testing or when monitoring logs.  However, this only is an issue when there is a forced shutdown of the process. Any unit tests or CI pipelines should let the JVM flow through a normal lifecycle.
-
-The command in this demo to shutdown the app is:
+For WindowsAuth, many defaults are disabled for example:
 
 ```
-curl -u admin:demo -X POST http://localhost:8080/actuator/shutdown
-```
+	@Bean
+	@Order(1)
+	public SecurityFilterChain windowsAuthChain(HttpSecurity http, JwtUtil jwtUtil,
+			CorsConfigurationSource corsConfigurationSource) throws Exception {
 
-Since this doesn't seem to incur significant overhead to the buld times or runtime performance, we could investigate the use of actuators for other purposes in WebAPI.
+		http
+				.securityMatcher("/user/login/windows")
+				.csrf(AbstractHttpConfigurer::disable)
+				.cors(cors -> cors.configurationSource(corsConfigurationSource))
+				// Disable all unnecessary filters
+				.requestCache(AbstractHttpConfigurer::disable)
+				.sessionManagement(AbstractHttpConfigurer::disable)
+				.logout(AbstractHttpConfigurer::disable)
+				.anonymous(AbstractHttpConfigurer::disable)
+				.formLogin(AbstractHttpConfigurer::disable)
+				.httpBasic(AbstractHttpConfigurer::disable)
+				.authorizeHttpRequests(authz -> authz.anyRequest().permitAll())
+				.exceptionHandling(ex -> ex
+						.authenticationEntryPoint(
+								(req, res, excep) -> res.sendError(HttpServletResponse.SC_UNAUTHORIZED)
+						)
+				)
+				.addFilterAfter(windowsAuthFilter(jwtUtil), CorsFilter.class);
 
-## The Echo REST controller
-
-The core purpose of the demo application (aside from the JDK21 and Flyway migration) is to expose a simple REST endpoint using Spring Boot that echoes back a message provided as a URL parameter. Spring Boot streamlines the development of web applications by auto-configuring the underlying framework and embedding a servlet container, allowing developers to focus on writing minimal boilerplate code. In this case, a single controller class was defined using the @RestController annotation to handle incoming HTTP GET requests. The controller maps a route `/echo` and reads a query parameter named `message`. When accessed, the endpoint simply returns the value of that message parameter as the HTTP response body. This kind of controller is useful for validating connectivity, exploring request handling, or serving as a foundation for more advanced behavior.
-
-For Spring annotations, we are using the `RestController`, `RequestMapping` and `GetMapping` Spring REST annotations to associate the HTTP path to the controller method:
-
-```
-@RestController
-@RequestMapping("/")
-public class EchoController {
-
-	@GetMapping("/echo")
-	public String echo(String message) {
-		return "echo: " + message;
+		return http.build();
 	}
-}
+
+	private WindowsAuthFilter windowsAuthFilter(JwtUtil jwtUtil) {
+		WindowsAuthFilter filter = new WindowsAuthFilter(jwtUtil);
+		return filter;
+	}
+
 ```
+
+Some notes:
+- The `@Order(1)` on the bean is to control the order of pattern matching being applied in the `SecurityFilterChain`.  The default chain should be `@Order(100)` so that it applies after all other matching URLs, and any authentication `SecurityFilterChain` paths can be set to `@Order(1)`, because all that matters is that they are handled before the general (JWT Authentication) URL match (*).
+- REST API types of applications don't have form authentication or logout handling, so in most cases these are disabled.  However, based on the authentication mechanism, you may want different things enabled, so this structure of code enforces which filters should be used for which authentication.
+
+
+# Login/Logout Semantics
+
+## Atlas 2.x
+
+In Atlas 2.x, when a user logs in, they are granted a JWT token that expires based on a timeout (configurable), and the client invokes a `refresh` endpoint in order to extend a user's login session (before the JWT token expires).  On its own, this would prevent the need for state on the server because the JWT token self-validates based on a signature and therefore isn't stored anywhere (either in WebAPI memory or in the database): nothing needs to be looked up and matched with server state compared to what the client presents in the Bearer token.  
+
+This works better in load-balanced settings where it doesn't matter which server you are connecting to, the token can be validated in a clustered context (as opposed to 'sticky servers').  No session state or client cookies are needed.  
+
+However, there is an additional functional requirement:  a user can only log in once.   This means that the server needs to maintain state about a users's 'active' token, such that if a user submits a valid JWT token, it's only accepted if it is recorded as the user's 'current' token.  Because this, much of the advantage of self-contained JWT tokens is lost.  If the user logs into a specific node on the load-balanced cluster, the client will need to 'stick' there because each node in the cluster only knows about the sessions they have created (unless you use a shared-state service or shared database, which as a performance penalty).  
+
+Even without this functional requirement (which would incur a state property), if we want to support a SSO signout or credential revocation from a central source, the WebAPI service would need to continue maintaining the state of JWTs that they minted for the client (ie: in order to revoke tokens for a client, you need to know what they are).
+
+### Recommended JWT Architecture (Industry Standard based on ChatGPT)
+
+On login, the server issues **two tokens**:
+
+#### Access token (JWT)
+- Short lifetime (e.g. 5–15 minutes).  
+- Sent with every request in `Authorization: Bearer <access_token>`.  
+
+#### Refresh token
+- Longer lifetime (e.g. days/weeks).  
+- Stored securely (often in **HTTP-only cookie**).  
+- Used only to request a new access token.  
+
+The client holds onto the refresh token, and when the access token expires, they call an endpoint like `/auth/refresh` with the refresh token.  
+
+✅ **Standard pattern** (used by OAuth2, OpenID Connect, etc.).
+
+---
+
+### 🧾 Why two tokens?
+
+- **Access token** = fast, stateless, secure by being short-lived.  
+- **Refresh token** = allows long-lived sessions without forcing re-login every 10 minutes.  
+- If an access token leaks → the damage window is short.  
+- If a refresh token leaks → you can revoke it on the server (blacklist/DB check).  
+
+---
+
+### 🔑 Best practice today
+
+When someone logs in:
+- You mint both:  
+  - **Access token** (JWT, short TTL, stateless).  
+  - **Refresh token** (long TTL, stored server-side in DB/Redis with user ID & status).  
+
+Logout means:
+- Delete the **refresh token** (from DB or memory).  
+- Access token naturally expires soon.  
+
+## Atlas 3.x
+
+Migrating to a two-token architecture will be a significant change in behavior from the UI (Atlas) perspective:   separate tokens will need to be saved in order to perform the refresh task vs. the access task.  This sandbox project demonstrates endpoints that can extend the life of the user's JWT (which serves as an 'access token'), but there are pros and cons by maintaining the current 2.x architecture:
+
+### 🔁 How “refreshing with the same token” would work
+
+1. Client calls `/auth/refresh` with the current **access token**.  
+2. Server validates it, checks expiry isn’t passed yet.  
+3. Server issues a new token with a new `exp`.  
+4. If the client fails to refresh before expiry, they must re-authenticate.  
+
+---
+
+### ⚖️ Pros
+
+- **Simplicity**: Only one kind of token to manage.  
+- **No DB/cache**: You don’t need to store refresh tokens server-side.  
+- **Sliding sessions**: Active users can keep extending their session, idle ones time out.  
+
+---
+
+### 🚨 Cons (and why industry prefers separate refresh tokens)
+
+#### Replay risk
+- If an attacker steals the access token, they can keep refreshing it forever → unlimited lifetime.  
+- With a refresh token model, stolen access tokens expire quickly, limiting damage.  
+
+#### Breaks statelessness
+- To safely implement sliding expiration, you often need to keep **server-side state** (e.g., a “last refresh time” per user or token ID) to prevent abuse.  
+- Otherwise, the client could keep re-using the same original token indefinitely, which isn’t safe.  
+
+#### Token bloat
+- JWTs are meant to be “issue once, verify many times.”  
+- Continuously re-minting them makes them behave more like **opaque session cookies**.  
+
+#### Harder revocation
+- Without a separate refresh token store, you have no easy hook to revoke tokens (e.g., on logout, password change, admin action).  
+- You’d need **blacklisting logic** anyway → which brings back server-side state.  
+
+---
+
+### 🏆 Why best practice is two tokens
+
+- **Access tokens**: short-lived, stateless, easy to validate.  
+- **Refresh tokens**: long-lived, but server-managed, so you can revoke them.  
+- **Security model**:  
+  - If access token is stolen → attacker only has a 10–15 min window.  
+  - If refresh token is stolen → you can revoke it centrally.  
+
