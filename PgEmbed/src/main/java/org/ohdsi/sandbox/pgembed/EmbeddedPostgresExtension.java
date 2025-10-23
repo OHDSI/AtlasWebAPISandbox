@@ -1,7 +1,7 @@
 package org.ohdsi.sandbox.pgembed;
 
 import org.junit.jupiter.api.extension.*;
-import com.opentable.db.postgres.embedded.EmbeddedPostgres;
+import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -19,8 +19,8 @@ public class EmbeddedPostgresExtension implements BeforeAllCallback, AfterAllCal
 	@Retention(RetentionPolicy.RUNTIME)
 	@ExtendWith(EmbeddedPostgresExtension.class)
 	public @interface WithEmbeddedPostgres {
-
-		int port() default 0;
+		int port() default -1;
+		int timeoutSeconds() default -1;
 	}
 
 	private static EmbeddedPostgres postgres;
@@ -33,9 +33,13 @@ public class EmbeddedPostgresExtension implements BeforeAllCallback, AfterAllCal
 	public void beforeAll(ExtensionContext context) throws Exception {
 
 		WithEmbeddedPostgres config = context.getRequiredTestClass().getAnnotation(WithEmbeddedPostgres.class);
-		int port = (config != null) ? config.port() : 0;
 		PGFactory.Options options = new PGFactory.Options();
-		options.port = Optional.of(port);
+		if (config != null) {
+			if (config.port() != -1)
+				options.port = Optional.of(config.port());
+			if (config.timeoutSeconds() != -1)
+				options.timeoutSeconds = Optional.of(config.timeoutSeconds());
+		}
 		postgres = PGFactory.createEmbeddedPostgres(options);
 		getStore(context).put("postgres", postgres);
 	}

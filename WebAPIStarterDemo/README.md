@@ -85,6 +85,17 @@ curl -u admin:demo -X POST http://localhost:8080/actuator/shutdown
 
 Since this doesn't seem to incur significant overhead to the buld times or runtime performance, we could investigate the use of actuators for other purposes in WebAPI.
 
+### Update 10/23/2025
+
+As of an update to either VSCode or the transition to the io.zonky dependency for PgEmbed, the curl command to request the shutdown of the app is no longer required.   The ctrl-C (windows) to kill the process signals the graceful shutdown and cleans up running databases as seen in this log:
+
+```
+Embedded Postgres shut down.
+2025-10-23T12:53:20.484-04:00  INFO 35572 --- [WebAPIStarterDemo] [ionShutdownHook] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+2025-10-23T12:53:20.496-04:00  INFO 35572 --- [WebAPIStarterDemo] [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+```
+
+
 ## The Echo REST controller
 
 The core purpose of the demo application (aside from the JDK21 and Flyway migration) is to expose a simple REST endpoint using Spring Boot that echoes back a message provided as a URL parameter. Spring Boot streamlines the development of web applications by auto-configuring the underlying framework and embedding a servlet container, allowing developers to focus on writing minimal boilerplate code. In this case, a single controller class was defined using the @RestController annotation to handle incoming HTTP GET requests. The controller maps a route `/echo` and reads a query parameter named `message`. When accessed, the endpoint simply returns the value of that message parameter as the HTTP response body. This kind of controller is useful for validating connectivity, exploring request handling, or serving as a foundation for more advanced behavior.
