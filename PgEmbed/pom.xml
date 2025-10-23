@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.ohdsi.sandbox</groupId>
 	<artifactId>pg-embed</artifactId>
-	<version>1.0.0</version>
+	<version>1.1.0</version>
 	<packaging>jar</packaging>
 	<name>pg-embed</name>
 	<description>Spawns an embedded PG instance for use in sandbox apps</description>
@@ -37,7 +38,19 @@
 			<url>https://repo.ohdsi.org/nexus/content/groups/public</url>
 		</pluginRepository>
 	</pluginRepositories>
-	
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>io.zonky.test.postgres</groupId>
+				<artifactId>embedded-postgres-binaries-bom</artifactId>
+				<version>17.6.0</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 	<dependencies>
 		<!-- postgres driver marked optional so not to propogate down to dependent projects -->
 		<dependency>
@@ -45,22 +58,69 @@
 			<artifactId>postgresql</artifactId>
 			<version>42.7.3</version>
 			<optional>true</optional>
-		</dependency>		
-
-		<!-- Embedded Postgres (using opentable) -->
-		<dependency>
-			<groupId>com.opentable.components</groupId>
-			<artifactId>otj-pg-embedded</artifactId>
-			<version>0.13.3</version>
 		</dependency>
-		
+
+		<!-- Embedded Postgres (using zonky.io) -->
+		<dependency>
+			<groupId>io.zonky.test</groupId>
+			<artifactId>embedded-postgres</artifactId>
+			<version>2.1.1</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
 			<artifactId>junit-jupiter-api</artifactId>
 			<version>5.10.1</version>
 			<optional>true</optional>
 		</dependency>
-
 	</dependencies>
+
+	<profiles>
+		<profile>
+			<id>windows-x86-zonky-postgres</id>
+			<activation>
+				<os>
+					<family>Windows</family>
+					<arch>amd64</arch>
+				</os>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>io.zonky.test.postgres</groupId>
+					<artifactId>embedded-postgres-binaries-windows-amd64</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+		<profile>
+			<id>apple-silicon-zonky-postgres</id>
+			<activation>
+				<os>
+					<family>mac</family>
+					<arch>aarch64</arch>
+				</os>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>io.zonky.test.postgres</groupId>
+					<artifactId>embedded-postgres-binaries-darwin-arm64v8</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+		<profile>
+			<id>linux-x86-zonky-postgres</id>
+			<activation>
+				<os>
+					<family>unix</family>
+					<arch>amd64</arch>
+				</os>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>io.zonky.test.postgres</groupId>
+					<artifactId>embedded-postgres-binaries-linux-amd64-alpine</artifactId>
+				</dependency>
+			</dependencies>
+		</profile>
+	</profiles>
 
 </project>

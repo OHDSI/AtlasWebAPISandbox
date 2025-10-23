@@ -1,6 +1,6 @@
 package org.ohdsi.sandbox.WebAPIStarterDemo;
 
-import com.opentable.db.postgres.embedded.EmbeddedPostgres;
+import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
