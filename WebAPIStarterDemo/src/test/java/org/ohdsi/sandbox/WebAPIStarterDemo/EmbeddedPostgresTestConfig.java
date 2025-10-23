@@ -1,6 +1,6 @@
 package org.ohdsi.sandbox.WebAPIStarterDemo;
 
-import com.opentable.db.postgres.embedded.EmbeddedPostgres;
+import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.datasource.SimpleDriverDataSource;
