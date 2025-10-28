@@ -1,0 +1,4 @@
+app:
+  name: OHDSI Sandbox External Config Example
+  environment: default
+  customMessage: Hello from default embedded configuration!
