@@ -1,0 +1,23 @@
+app:
+  main-schema: migration_test
+  datasource:
+    main:
+      connection:
+        url: jdbc:postgresql://localhost:5436/MIGRATION_DEMO
+        username: ohdsi_app_user
+        password: app1
+        driver-class-name: org.postgresql.Driver
+
+    flyway:
+      connection:
+        url: ${app.datasource.main.connection.url}
+        username: ohdsi_admin_user
+        password: admin1
+        driver-class-name: ${app.datasource.main.connection.driver-class-name}
+      schema: ${app.main-schema}
+      locations_1: [classpath:db/migration,classpath:db/migration_v2]
+      locations_2: [classpath:db/migration,classpath:db/migration_v2]
+      locations: [classpath:db/migration]
+      placeholders:
+        schemaName: ${app.main-schema}
+
