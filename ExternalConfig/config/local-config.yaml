@@ -1,0 +1,3 @@
+app:
+  environment: developer
+  customMessage: Hello from your external configuration file!
