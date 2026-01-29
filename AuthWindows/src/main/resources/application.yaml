@@ -1,0 +1,24 @@
+# Waffle internals
+logging:
+  level:
+    waffle: DEBUG
+    waffle.spring: DEBUG
+    waffle.servlet: DEBUG
+    waffle.windows: DEBUG
+    org.springframework.security: DEBUG
+
+# auth enables
+security:
+  auth:
+    db:
+      enabled: true
+      lockout-policy:
+        max-failed-attempts: 5
+        lockout-duration: 30m     
+    windows:
+      enabled: true
+  cors:
+    enabled: true
+    allowed-origins: "http://localhost:8080"
+
+

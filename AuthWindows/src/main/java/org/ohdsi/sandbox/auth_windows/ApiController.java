@@ -13,10 +13,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api")
 public class ApiController {
 
-	private final JwtUtil jwtUtil;
+	private final JwtService jwtSvc;
 
-	public ApiController(JwtUtil jwtUtil) {
-		this.jwtUtil = jwtUtil;
+	public ApiController(JwtService jwtSvc) {
+		this.jwtSvc = jwtSvc;
 	}
 
 	@GetMapping("/public")
@@ -26,8 +26,8 @@ public class ApiController {
 
 	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/secure")
-	public String secureEndpoint() {
-		return "This endpoint is secured and requires authentication.";
+	public String secureEndpoint(Authentication authentication) {
+		return "This endpoint is secured and requires authentication.   Your identity is: " + authentication.getName();
 	}
 
 	@PreAuthorize("hasRole('ADMIN')")
@@ -40,7 +40,7 @@ public class ApiController {
 	@GetMapping("/refresh")
 	public Map<String, String> refreshToken() {
 		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-		String token = jwtUtil.generateToken(auth.getName());
+		String token = jwtSvc.generateToken(auth.getName());
 		return Map.of("token", token);
 	}
 	
