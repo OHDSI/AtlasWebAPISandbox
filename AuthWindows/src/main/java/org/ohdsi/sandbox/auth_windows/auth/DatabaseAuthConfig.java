@@ -1,13 +1,12 @@
-package org.ohdsi.sandbox.auth_windows;
+package org.ohdsi.sandbox.auth_windows.auth;
 
 import java.util.List;
 
 import javax.sql.DataSource;
 
-import org.ohdsi.sandbox.auth_windows.db.DatabaseAuthenticationProvider;
-import org.ohdsi.sandbox.auth_windows.db.DatabaseUserDetailsService;
-import org.ohdsi.sandbox.auth_windows.db.JsonUsernamePasswordAuthenticationFilter;
-import org.ohdsi.sandbox.auth_windows.db.LockoutPolicyProperties;
+import org.ohdsi.sandbox.auth_windows.auth.db.DatabaseAuthenticationProvider;
+import org.ohdsi.sandbox.auth_windows.auth.db.DatabaseUserDetailsService;
+import org.ohdsi.sandbox.auth_windows.auth.db.LockoutPolicyProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -16,12 +15,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
@@ -52,23 +51,27 @@ public class DatabaseAuthConfig {
       PasswordEncoder authEncoder,
       CorsConfigurationSource corsConfigurationSource) throws Exception {
 
-    DatabaseAuthenticationProvider provider = new DatabaseAuthenticationProvider(dbUserDetailsService, authEncoder, lockoutProps);
+    DatabaseAuthenticationProvider provider = new DatabaseAuthenticationProvider(dbUserDetailsService, authEncoder,
+        lockoutProps);
     AuthenticationManager authManager = new ProviderManager(List.of(provider));
-    JsonUsernamePasswordAuthenticationFilter jsonFilter = new JsonUsernamePasswordAuthenticationFilter(authManager);
 
     http
-        // Only apply this chain to DB login endpoints
-        .securityMatcher("/user/login/db")
-        .csrf(AbstractHttpConfigurer::disable)
-        .cors(cors -> cors.configurationSource(corsConfigurationSource))
-        // Disable all unecessary filters
-        .requestCache(AbstractHttpConfigurer::disable)
-        .sessionManagement(AbstractHttpConfigurer::disable)
-        .logout(AbstractHttpConfigurer::disable)
-        .anonymous(AbstractHttpConfigurer::disable)
-        .formLogin(AbstractHttpConfigurer::disable)
-        // Add our JSON filter in place of the AuthorizationFilter
-        .addFilterBefore(jsonFilter, AuthorizationFilter.class);
+      // Only apply this chain to DB login endpoints
+      .securityMatcher("/user/login/db")
+      .csrf(AbstractHttpConfigurer::disable)
+      .cors(cors -> cors.configurationSource(corsConfigurationSource))
+      // Disable all unecessary filters
+      .requestCache(AbstractHttpConfigurer::disable)
+      .sessionManagement(AbstractHttpConfigurer::disable)
+      .logout(AbstractHttpConfigurer::disable)
+      .anonymous(AbstractHttpConfigurer::disable)
+      .formLogin(AbstractHttpConfigurer::disable)
+      // Attach the AuthenticationManager
+      .authorizeHttpRequests(auth -> auth
+        .anyRequest().authenticated())
+      .authenticationManager(authManager)
+      // Let Spring handle Basic auth
+      .httpBasic(Customizer.withDefaults());
 
     return http.build();
   }

@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.auth_windows;
+package org.ohdsi.sandbox.auth_windows.auth;
 
 import java.util.Arrays;
 

@@ -14,9 +14,27 @@ security:
       enabled: true
       lockout-policy:
         max-failed-attempts: 5
-        lockout-duration: 30m     
+        lockout-duration: 30m
+# datasource not used in this POC, an embedded stub is created
+      datasource:
+        driverClassName: org.postgresql.Driver
+        password: app1dbsecurity_pass
+        url: jdbc:postgresql://localhost:5436/SECURITY_DB
+        username: dbsecurity_user	        
     windows:
       enabled: true
+    ldap:
+      enabled: true
+      base-dn: dc=glauth,dc=com
+      # No Spaces in the bind-dn! Careful when doing concatination
+      bind-dn: cn=serviceuser,${security.auth.ldap.base-dn}
+      bind-password: mysecret
+      group-filter: (uniqueMember={0})
+      group-role-attr: "cn"
+      group-search-base: ou=groups
+      url: ldap://localhost:3893
+      user-filter: (cn={0})
+      user-search-base: ""
   cors:
     enabled: true
     allowed-origins: "http://localhost:8080"

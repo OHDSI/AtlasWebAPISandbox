@@ -1,7 +1,9 @@
-package org.ohdsi.sandbox.auth_windows.db;
+package org.ohdsi.sandbox.auth_windows.auth.db;
 
 import java.time.LocalDateTime;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -11,6 +13,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 public class DatabaseAuthenticationProvider implements AuthenticationProvider {
+
+  private static final Logger log = LoggerFactory.getLogger(DatabaseAuthenticationProvider.class);
 
   private final DatabaseUserDetailsService userDetailsService;
   private final PasswordEncoder passwordEncoder;
@@ -47,6 +51,7 @@ public class DatabaseAuthenticationProvider implements AuthenticationProvider {
       throw new BadCredentialsException("Invalid credentials");
     }
 
+    log.info("Successful login for DB authentication.  Resetting failed attempts and returning authenticated token");
     // Successful login → reset failed attempts
     userDetailsService.resetFailedAttempts(username);
 

@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.auth_windows;
+package org.ohdsi.sandbox.auth_windows.auth;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
