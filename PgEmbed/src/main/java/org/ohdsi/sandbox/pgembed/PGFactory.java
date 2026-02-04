@@ -26,9 +26,10 @@ public abstract class PGFactory {
 			int port = options.port.orElse(0);
 			int startupWait = options.timeoutSeconds.orElse(30);
 			postgres = EmbeddedPostgres.builder()
-							.setPort(port) // 0 = choose a random free port
+				.setPGStartupWait(Duration.ofSeconds(30))
+				.setPort(port) // 0 = choose a random free port
 							.setPGStartupWait(Duration.ofSeconds(startupWait)) 
-							.start();
+				.start();
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to start Embedded Postgres", e);
 		}
