@@ -43,7 +43,7 @@ Where possible, core Spring Security Framework classes are preferred.
 
 In summary, the implementation of an authentication implementation should consist of a `{AuthType}AuthConfig` file that will set up the `SecurityFilterChain` to the authentication path, and a filter (with zero or more dependent classes) that will handle the actual authentication work.  The filter is injected into the `SecurityFilterChain` via the `{AuthType}AuthConfig` class, or handled by an authentication provider.
 
-# Spring Security SecurityFilterChain Basics
+## Spring Security SecurityFilterChain Basics
 
 When you declare a **SecurityFilterChain** without disabling defaults, Spring wires in a long list of filters.  
 Some of the important ones (in rough order):
@@ -122,6 +122,79 @@ Some notes:
 - The `@Order(1)` on the bean is to control the order of pattern matching being applied in the `SecurityFilterChain`.  The default chain should be `@Order(100)` so that it applies after all other matching URLs, and any authentication `SecurityFilterChain` paths can be set to `@Order(1)`, because all that matters is that they are handled before the general (JWT Authentication) URL match (*).
 - REST API types of applications don't have form authentication or logout handling, so in most cases these are disabled.  However, based on the authentication mechanism, you may want different things enabled, so this structure of code enforces which filters should be used for which authentication.
 
+## The SecurityChain (filter) -> App Controller Hand-off
+
+It is important to understand that the filter's `match()` on a path does not automatically expose an endpoint to the API.  This is where the filter -> controller hand-off comes into play.   This boundary exists because authentication concerns should be localized to the handling the request (at the filter) and then after the request is handled (from authentication perspective) the request moves into the application boundary context.  The application context lives within controllers (that invoke services, and do other application-specific logic such as loading mapped roles into the user's context).  Therefore, there is a `LoginController` which encapsulates the differnt authentication endpoints. This is done for 2 reasons: 1) we don't want to pollute the API space with new top-level classes like `WindowsAuthController` and `LdapAuthController` so embedding those classes in a containign class de-clutters the code tree, and 2) Spring conditional instantiating happens at the class-level and you can't conditionally disable REST endpoints at the method level, so this requires class-per-endpoint authentication endpoint. The following class tries to balance both concerns:
+
+```
+public class LoginController {
+
+  /**
+   * Windows Authentication controller which responds with JWT and login results.
+   */
+  @RestController
+  @ConditionalOnProperty(prefix = "security.auth.windows", name = "enabled", havingValue = "true")
+  public static class Windows {
+    private final LoginService loginSvc;
+
+    public Windows(LoginService loginSvc) {
+      this.loginSvc = loginSvc;
+    }
+
+    @GetMapping("/user/login/windows")
+    public LoginService.Result login(Authentication authentication) {
+      return loginSvc.onSuccess(authentication);
+    }
+  }
+
+  /**
+   * Database Authentication controller which responds with JWT and login results.
+   */
+  @RestController
+  @ConditionalOnProperty(prefix = "security.auth.db", name = "enabled", havingValue = "true")
+  public static class Database {
+    private final LoginService loginSvc;
+
+    public Database(LoginService loginSvc) {
+      this.loginSvc = loginSvc;
+    }
+
+    @GetMapping("/user/login/db")
+    public LoginService.Result login(Authentication authentication) {
+      return loginSvc.onSuccess(authentication);
+    }
+  }
+
+  /**
+   * Database Authentication controller which responds with JWT and login results.
+   */
+  @RestController
+  @ConditionalOnProperty(prefix = "security.auth.ldap", name = "enabled", havingValue = "true")
+  public static class Ldap {
+
+    private final LoginService loginSvc;
+    private static final Logger log = LoggerFactory.getLogger(Ldap.class);
+    
+    public Ldap(LoginService loginSvc) {
+      this.loginSvc = loginSvc;
+    }
+
+    @GetMapping("/user/login/ldap")
+    public LoginService.Result login(Authentication authentication) {
+
+      List<String> roles = authentication.getAuthorities().stream()
+          .map(GrantedAuthority::getAuthority)
+          .toList();
+
+      log.info("User {} has roles {}", authentication.getName(), roles);
+      return loginSvc.onSuccess(authentication);
+    }
+  }
+
+}
+```
+
+The `LoginController` wraps individual classes that expose the authentication endpoints, and call out to the `LoginService` to take the necessary actions when a login is completed.   The 'wrapper' class wraps the individual classes for each authentication endpoint so that they can be disabled based on the authentication setting in `applicatin.yaml`.  
 
 # Login/Logout Semantics
 
