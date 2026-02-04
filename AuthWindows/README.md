@@ -9,7 +9,7 @@ This sandbox project demonstrates Spring Security authentication with the follow
 - Windows Authentication (via Waffle)
 - DB Authentication (via Embedded DB with default users populated)
 - LDAP (via referencing external provider GLAuth with additional config (see LDAP section))
-- OAuth2 (Google/Facebook)
+- OAuth2 (Google/Facebook) (Not Implemented in this Sandbox)
 - Tomcat Embed 10.1
 
 # Spring Security Concepts
@@ -244,7 +244,11 @@ security:
     windows:
       enabled: true
 ```
+Curl example to test (note: only works on Windows):
 
+```
+curl.exe --negotiate -u :  http://localhost:8080/user/login/windows
+```
 
 ## Database Authentication
 
@@ -286,6 +290,12 @@ security:
         url: jdbc:postgresql://localhost:5436/SECURITY_DB
         username: dbsecurity_user			
 ```
+
+Example curl to test:
+```
+curl.exe -u alice:password1  http://localhost:8080/user/login/db
+```
+
 ## LDAP Authentication
 
 This LDAP authentication implementation defines a dedicated Spring Security authentication chain that validates user credentials against an LDAP directory and resolves group memberships into application authorities. The configuration is conditionally enabled via security.auth.ldap.enabled and is scoped exclusively to the /user/login/ldap endpoint, allowing LDAP authentication to coexist cleanly alongside other login mechanisms. For proof-of-concept purposes, the LDAP directory is provided by [GLAuth](https://github.com/glauth/glauth), a lightweight LDAP server that can be easily stood up for development and testing. GLAuth is launched in non-SSL mode using its command-line executable, and a small modification is applied to the default configuration to support group-based authorization.
@@ -332,4 +342,13 @@ security:
       user-filter: (cn={0})
       user-search-base: ""
 ```
+
+Users in sample config:
+johndoe:dogood
+
+Example curl to test:
+```
+curl.exe -u johndoe:dogood2  http://localhost:8080/user/login/ldap
+```
+
 
