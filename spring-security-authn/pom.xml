@@ -10,11 +10,11 @@
 		<!-- lookup parent from repository -->
 	</parent>
 	<groupId>org.ohdsi.sandbox</groupId>
-	<artifactId>auth-windows</artifactId>
+	<artifactId>spring-security-authn</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>war</packaging>
-	<name>AuthWindows</name>
-	<description>Demonstrating Windows Authentication</description>
+	<name>Spring Security Authentication</name>
+	<description>Demonstrating Spring Security Authentication</description>
 	<url/>
 	<licenses>
 		<license>

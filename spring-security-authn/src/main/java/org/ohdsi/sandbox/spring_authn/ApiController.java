@@ -1,8 +1,8 @@
-package org.ohdsi.sandbox.auth_windows;
+package org.ohdsi.sandbox.spring_authn;
 
 import java.util.Map;
 
-import org.ohdsi.sandbox.auth_windows.auth.JwtService;
+import org.ohdsi.sandbox.spring_authn.auth.JwtService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;

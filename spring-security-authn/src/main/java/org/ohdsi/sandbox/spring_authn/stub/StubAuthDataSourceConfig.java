@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.auth_windows.stub;
+package org.ohdsi.sandbox.spring_authn.stub;
 
 import javax.sql.DataSource;
 

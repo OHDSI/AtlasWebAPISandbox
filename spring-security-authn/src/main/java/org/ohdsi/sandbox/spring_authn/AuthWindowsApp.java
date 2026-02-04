@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.auth_windows;
+package org.ohdsi.sandbox.spring_authn;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

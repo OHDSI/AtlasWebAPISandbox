@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.auth_windows.auth.db;
+package org.ohdsi.sandbox.spring_authn.auth.db;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
