@@ -1,6 +1,7 @@
-package org.ohdsi.sandbox.spring_authn.auth;
+package org.ohdsi.sandbox.spring_authn.authn;
 
 import java.time.Instant;
+import java.util.Date;
 
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -11,21 +12,19 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtService {
 
-    private static final long JWT_EXPIRATION_MS = 3600_000;
-
     private final JwtEncoder jwtEncoder;
 
     public JwtService(JwtEncoder jwtEncoder) {
         this.jwtEncoder = jwtEncoder;
     }
 
-    public String generateToken(String username) {
-        Instant now = Instant.now();
+    public String generateToken(String username, String sessionId, Date expiresAt) {
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .subject(username)
-                .issuedAt(now)
-                .expiresAt(now.plusMillis(JWT_EXPIRATION_MS))
+                .issuedAt(Instant.now())
+                .expiresAt(expiresAt.toInstant())
+                .claim("sid", sessionId)
                 .build();
 
         JwsHeader header = JwsHeader

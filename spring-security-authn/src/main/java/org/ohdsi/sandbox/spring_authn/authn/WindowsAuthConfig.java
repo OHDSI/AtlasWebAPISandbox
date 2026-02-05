@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.spring_authn.auth;
+package org.ohdsi.sandbox.spring_authn.authn;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;

@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.spring_authn.auth;
+package org.ohdsi.sandbox.spring_authn.authn;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

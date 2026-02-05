@@ -1,12 +1,12 @@
-package org.ohdsi.sandbox.spring_authn.auth;
+package org.ohdsi.sandbox.spring_authn.authn;
 
 import java.util.List;
 
 import javax.sql.DataSource;
 
-import org.ohdsi.sandbox.spring_authn.auth.db.DatabaseAuthenticationProvider;
-import org.ohdsi.sandbox.spring_authn.auth.db.DatabaseUserDetailsService;
-import org.ohdsi.sandbox.spring_authn.auth.db.LockoutPolicyProperties;
+import org.ohdsi.sandbox.spring_authn.authn.db.DatabaseAuthenticationProvider;
+import org.ohdsi.sandbox.spring_authn.authn.db.DatabaseUserDetailsService;
+import org.ohdsi.sandbox.spring_authn.authn.db.LockoutPolicyProperties;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;

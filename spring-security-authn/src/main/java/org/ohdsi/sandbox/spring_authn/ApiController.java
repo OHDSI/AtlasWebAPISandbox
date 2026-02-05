@@ -2,10 +2,9 @@ package org.ohdsi.sandbox.spring_authn;
 
 import java.util.Map;
 
-import org.ohdsi.sandbox.spring_authn.auth.JwtService;
+import org.ohdsi.sandbox.spring_authn.authn.LoginService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,10 +13,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api")
 public class ApiController {
 
-	private final JwtService jwtSvc;
+	private final LoginService loginSvc;
 
-	public ApiController(JwtService jwtSvc) {
-		this.jwtSvc = jwtSvc;
+	public ApiController(LoginService loginSvc) {
+		this.loginSvc = loginSvc;
 	}
 
 	@GetMapping("/public")
@@ -39,10 +38,11 @@ public class ApiController {
 
 	@PreAuthorize("isAuthenticated()")
 	@GetMapping("/refresh")
-	public Map<String, String> refreshToken() {
-		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-		String token = jwtSvc.generateToken(auth.getName());
-		return Map.of("token", token);
+	public Map<String, String> refreshToken(Authentication authentication) {
+
+		LoginService.Result extendResult = loginSvc.extend(authentication);
+	
+		return Map.of("token", extendResult.jwt());
 	}
 	
 }

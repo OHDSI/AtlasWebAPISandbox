@@ -424,4 +424,169 @@ Example curl to test:
 curl.exe -u johndoe:dogood2  http://localhost:8080/user/login/ldap
 ```
 
+## WebAPI Session Management
 
+WebAPI uses JWTs (JSON Web Tokens) for authentication. Each token is minted upon successful login and contains an expiration date. The system validates JWTs on each request, but in the current implementation, session state is stored in-memory using a `PassiveExpiringMap`. This approach has several limitations:
+
+- Sessions do not survive application restarts.
+- Shared or clustered environments cannot coordinate session state.
+- Session management and JWT minting are tightly coupled, mixing authentication concerns with session tracking.
+
+The approach described here decouples JWT handling from session management while storing sessions in a database for persistence and easier maintenance.
+
+
+#### 1. Session Creation
+
+- When a user logs in, a session is created in the database with a UUID, username, creation timestamp, and expiration timestamp.
+- If single-login mode is enabled, any existing sessions for the user are revoked.
+- A `cleanupRequired` flag is set to `true` whenever a new session is created to trigger scheduled cleanup later.
+
+```java
+public UUID createSession(String username) {
+    if (props.isSingleLogin()) {
+        repo.revokeByUsername(username);
+        log.debug("Revoking sessions for: {}", username);
+    }
+
+    UUID sessionId = UUID.randomUUID();
+    Instant now = Instant.now();
+    Instant expiresAt = now.plus(props.getExpiration());
+
+    UserSession session = new UserSession();
+    session.setSessionId(sessionId);
+    session.setUsername(username);
+    session.setCreatedAt(now);
+    session.setExpiresAt(expiresAt);
+    session.setRevoked(false);
+
+    repo.save(session);
+    this.cleanupRequired = true;
+    log.debug("Session: {} created for: {}", sessionId, username);
+
+    return sessionId;
+}
+```
+
+#### 2. Session Extension
+
+- When a user performs an action or refreshes their JWT, the session expiration can be extended.
+- The `cleanupRequired` flag is updated in case the new expiration creates overlapping session expiration windows.
+
+```java
+public void extendSession(UUID sessionId, Instant newExpiresAt) {
+    repo.findById(sessionId).ifPresent(session -> {
+        session.setExpiresAt(newExpiresAt);
+        repo.save(session);
+        cleanupRequired = true;
+    });
+    log.debug("Session: {} extended to: {}", sessionId, newExpiresAt);
+}
+```
+
+#### 3. Session Revocation
+
+- Sessions can be revoked individually or per user.
+- Revoked sessions remain in the database but are marked as `revoked`.
+- This allows JWT validation to check if a session is still valid without removing historical records.
+
+```java
+public void revokeSession(UUID sessionId) {
+    repo.revokeBySessionId(sessionId);
+    cleanupRequired = true;
+    log.debug("Session: {} revoked.", sessionId);
+}
+
+public void revokeUserSessions(String username) {
+    repo.revokeByUsername(username);
+    cleanupRequired = true;
+    log.debug("Sessions for user: {} revoked.", username);
+}
+```
+
+#### 4. Scheduled Cleanup
+
+- Expired sessions are automatically cleaned up by a scheduled task.
+- The task runs at a configurable interval, e.g., every hour.
+- To avoid unnecessary database hits, a `cleanupRequired` flag is used:
+  - When a session is created or extended, the flag is set to `true`.
+  - The cleanup task only performs work if `cleanupRequired` is `true`.
+  - After cleanup, the task counts remaining expired sessions; if any remain, `cleanupRequired` is reset to `true`.
+
+```java
+@Scheduled(fixedRateString = "#{${security.sessions.cleanup-interval}.toMillis()}")
+public void cleanupExpiredSessions() {
+    if (!cleanupRequired)
+        return;
+
+    // Remove expired sessions from the database
+    repo.deleteByExpiresAtBefore(Instant.now());
+
+    // Check if more expired sessions exist and set the flag accordingly
+    long openSessions = repo.countByExpiresAtAfter(Instant.now());
+    cleanupRequired = openSessions > 0;
+
+    log.debug("Cleanup for expired sessions completed. Outstanding sessions: {}", openSessions);
+}
+```
+
+- **Notes:**
+  - The scheduled method lives directly in `UserSessionStore` for simplicity.
+  - `@Scheduled` requires `@EnableScheduling` on a configuration class or the main application.
+  - Using the flag avoids running unnecessary queries when the system is idle.
+
+
+#### 5. Database Storage & Repository
+
+- Sessions are persisted in a relational database table with the following columns: `sessionId`, `username`, `createdAt`, `expiresAt`, and `revoked`.
+- The repository provides methods for:
+
+  - Validating a session
+  - Revoking sessions
+  - Counting expired sessions for cleanup
+  - Counting active sessions to determine if more cleanup is needed
+
+```java
+@Repository
+public interface UserSessionRepository extends JpaRepository<UserSession, UUID> {
+
+    @Query("""
+        select count(s) > 0
+        from UserSession s
+        where s.username = :username
+          and s.sessionId = :sessionId
+          and s.revoked = false
+          and s.expiresAt > :now
+    """)
+    boolean isSessionValid(String username, UUID sessionId, Instant now);
+
+    @Modifying
+    @Query("""
+        update UserSession s
+        set s.revoked = true
+        where s.username = :username
+    """)
+    void revokeByUsername(String username);
+
+    @Modifying
+    @Query("""
+        update UserSession s
+        set s.revoked = true
+        where s.sessionId = :sessionId
+    """)
+    void revokeBySessionId(UUID sessionId);
+
+    @Modifying
+    @Query("""
+        delete from UserSession s
+        where s.expiresAt < :now
+    """)
+    void deleteByExpiresAtBefore(Instant now);
+
+    @Query("""
+        select count(s)
+        from UserSession s
+        where s.expiresAt > :now
+    """)
+    long countByExpiresAtAfter(Instant now);
+}
+```

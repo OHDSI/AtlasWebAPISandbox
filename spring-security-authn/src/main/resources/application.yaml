@@ -6,6 +6,7 @@ logging:
     waffle.servlet: DEBUG
     waffle.windows: DEBUG
     org.springframework.security: DEBUG
+    org.ohdsi.sandbox.spring_authn: DEBUG
 
 # auth enables
 security:
@@ -38,5 +39,13 @@ security:
   cors:
     enabled: true
     allowed-origins: "http://localhost:8080"
+  sessions:
+    single-login: false
+    expiration: 30m
+    cleanup-interval: 1h
 
-
+spring:
+  jpa:
+    generate-ddl: false
+    hibernate:
+      ddl-auto: none
