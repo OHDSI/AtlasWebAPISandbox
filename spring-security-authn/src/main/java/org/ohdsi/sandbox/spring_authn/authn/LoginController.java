@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.spring_authn.auth;
+package org.ohdsi.sandbox.spring_authn.authn;
 
 import java.util.List;
 

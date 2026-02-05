@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.spring_authn.auth.db;
+package org.ohdsi.sandbox.spring_authn.authn.db;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
