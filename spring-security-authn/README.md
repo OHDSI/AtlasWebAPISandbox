@@ -590,3 +590,69 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
     long countByExpiresAtAfter(Instant now);
 }
 ```
+
+## Handling Multiple logins
+
+This implementation can optionally enforce a **single active session per user**. When enabled, logging in will revoke any existing sessions for the same username. This is controlled via the `sessions.single-login` property in the application YAML:
+
+```yaml
+sessions:
+  single-login: false
+  expiration: 30m
+  cleanup-interval: 1h
+```
+
+- **`single-login: true`**  
+  Only one active session per user is allowed. Any previous sessions will be revoked automatically when a new session is created.
+
+- **`single-login: false`**  
+  Users can maintain multiple concurrent sessions. Each session is managed independently, with its own expiration timestamp.
+
+### Implementation Details
+
+- When creating a session, the `UserSessionStore` checks the `single-login` property:
+
+```java
+public UUID createSession(String username) {
+
+    if (props.isSingleLogin()) {
+        repo.revokeByUsername(username);
+        log.debug("Revoking sessions for: {}", username);
+    }
+
+    UUID sessionId = UUID.randomUUID();
+    Instant now = Instant.now();
+    Instant expiresAt = now.plus(props.getExpiration());
+
+    UserSession session = new UserSession();
+    session.setSessionId(sessionId);
+    session.setUsername(username);
+    session.setCreatedAt(now);
+    session.setExpiresAt(expiresAt);
+    session.setRevoked(false);
+
+    repo.save(session);
+    this.cleanupRequired = true;
+    log.debug("Session: {} created for: {}", sessionId, username);
+
+    return sessionId;
+}
+```
+
+- The key behavior occurs in this block:
+
+```java
+if (props.isSingleLogin()) {
+    repo.revokeByUsername(username);
+    log.debug("Revoking sessions for: {}", username);
+}
+```
+
+This ensures that:
+
+1. Any existing sessions for the user are marked as revoked in the database.
+2. The new session is the only valid active session for that user.
+3. The `cleanupRequired` flag is set to ensure that scheduled cleanup tasks run when necessary.
+
+- When single-login is disabled, multiple sessions can coexist, and the system tracks each session independently with its own expiration timestamp.
+- Logging and database persistence remain consistent regardless of single-login mode, so the cleanup and session validation mechanisms work identically in both scenarios.
