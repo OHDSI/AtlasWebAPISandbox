@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.spring_authn.session;
+package org.ohdsi.sandbox.spring_authn.security.session;
 
 import java.time.Instant;
 import java.util.UUID;

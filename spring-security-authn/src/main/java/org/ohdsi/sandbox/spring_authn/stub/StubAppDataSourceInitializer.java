@@ -24,6 +24,7 @@ public class StubAppDataSourceInitializer {
 
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
         populator.addScript(new ClassPathResource("stub/app-schema.sql"));
+        populator.addScript(new ClassPathResource("stub/app-data.sql"));
         populator.execute(jdbc.getDataSource());
     }
 }

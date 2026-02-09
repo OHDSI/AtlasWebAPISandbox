@@ -1,11 +1,11 @@
-package org.ohdsi.sandbox.spring_authn.authn;
+package org.ohdsi.sandbox.spring_authn.security.authc;
 
 import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 
-import org.ohdsi.sandbox.spring_authn.session.SessionProperties;
-import org.ohdsi.sandbox.spring_authn.session.UserSessionStore;
+import org.ohdsi.sandbox.spring_authn.security.session.SessionProperties;
+import org.ohdsi.sandbox.spring_authn.security.session.UserSessionStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;

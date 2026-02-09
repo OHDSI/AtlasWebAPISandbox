@@ -1,6 +1,6 @@
 package org.ohdsi.sandbox.spring_authn;
 
-import org.ohdsi.sandbox.spring_authn.session.SessionProperties;
+import org.ohdsi.sandbox.spring_authn.security.session.SessionProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

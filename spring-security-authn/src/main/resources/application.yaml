@@ -1,3 +1,7 @@
+datasource:
+  ohdsi:
+    schema: "webapi"
+
 # Waffle internals
 logging:
   level:

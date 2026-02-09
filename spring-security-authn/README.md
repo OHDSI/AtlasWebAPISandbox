@@ -656,3 +656,307 @@ This ensures that:
 
 - When single-login is disabled, multiple sessions can coexist, and the system tracks each session independently with its own expiration timestamp.
 - Logging and database persistence remain consistent regardless of single-login mode, so the cleanup and session validation mechanisms work identically in both scenarios.
+
+# Package Structure for WebAPI Security
+
+# WebAPI Security Package Structure & Dependency Guide
+
+This section defines the **intentional package structure** for the `org.ohdsi.webapi.security` subsystem and the **dependency rules** that govern how those packages interact.
+
+The goal of this structure is to ensure that the *package tree itself documents the security architecture* of WebAPI, making it possible to understand what the system does by reading the folder structure — without needing to know which classes are DTOs, repositories, or converters.
+
+This structure is designed to support the ongoing migration from Shiro to Spring Security while keeping the security model coherent, testable, and evolvable.
+
+---
+
+## 1. Package Overview
+
+The security subsystem is organized around **capabilities**, not technical layers.
+
+```
+org.ohdsi.webapi.security
+ ├─ authc
+ ├─ authz
+ ├─ identity
+ ├─ session
+ ├─ user
+ ├─ permission
+ ├─ provisioning
+ └─ spring
+```
+
+Each package represents a distinct responsibility within the WebAPI security model.
+
+---
+
+## 2. Package Responsibilities
+
+### `security` (root)
+
+**Purpose**  
+Defines the boundary of the security subsystem.
+
+**Responsibilities**
+- High-level security configuration aggregation
+- Cross-cutting security constants
+- Base security exceptions
+- Security-related documentation
+
+**Must not**
+- Implement authentication mechanisms
+- Make authorization decisions
+- Contain persistence logic
+
+This package acts as the *index and entry point* for security.
+
+---
+
+### `security.authc` — Authentication
+
+**Purpose**  
+Establish identity for a request.
+
+**Responsibilities**
+- Login endpoints
+- Credential validation
+- JWT, database, or LDAP authentication mechanisms
+- Authentication-specific configuration
+- Initial identity establishment
+
+**Depends on**
+- `security.identity`
+- `security.session`
+- `security.spring`
+
+**Must not**
+- Evaluate permissions
+- Perform authorization decisions
+- Contain permission logic
+
+Subpackages such as `authc.db`, `authc.jwt`, or `authc.ldap` are encouraged when authentication mechanisms have distinct behavior.
+
+---
+
+### `security.identity` — Request Identity Resolution
+
+**Purpose**  
+Guarantee that every request resolves to a WebAPI user identity.
+
+**Responsibilities**
+- Mapping Spring Security context to a WebAPI user key
+- Anonymous identity resolution
+- Identity invariants (e.g., username uniqueness, sentinel user IDs)
+- Bridging authentication/session context to user resolution
+
+**Depends on**
+- `security.user`
+- `security.session` (if session-backed identity is used)
+
+**Must not**
+- Define permissions
+- Make authorization decisions
+- Implement authentication mechanisms
+
+This package should remain small and focused.
+
+---
+
+### `security.session` — Session Management
+
+**Purpose**  
+Maintain continuity of identity across requests.
+
+**Responsibilities**
+- Session creation and lookup
+- Session persistence
+- Session lifecycle management
+- Session-to-identity association
+- Anonymous session handling
+
+**Depends on**
+- `security.identity`
+- `security.user`
+
+**Must not**
+- Authenticate credentials
+- Evaluate permissions
+- Implement authorization logic
+
+The existence of this package explicitly documents that WebAPI has a durable concept of a session.
+
+---
+
+### `security.user` — User Domain
+
+**Purpose**  
+Define what a WebAPI user is and how user security data is resolved.
+
+**Responsibilities**
+- User, role, and relationship entities
+- User repositories
+- User services
+- Resolution of effective permissions
+- Definition of the anonymous user as a first-class user
+
+**Depends on**
+- `security.permission`
+
+**Must not**
+- Depend on Spring Security
+- Make authorization decisions
+- Parse credentials or tokens
+
+This package is the **center of gravity** for user-based security data.
+
+---
+
+### `security.permission` — Permission Semantics
+
+**Purpose**  
+Define what permissions *mean* in WebAPI.
+
+**Responsibilities**
+- Permission representation
+- Wildcard parsing
+- Permission implication logic
+- Permission comparison utilities
+
+**Depends on**
+- Nothing within `security`
+
+**Must not**
+- Know which users have permissions
+- Make authorization decisions
+- Access persistence layers
+
+This package should contain pure, framework-agnostic logic.
+
+---
+
+### `security.authz` — Authorization
+
+**Purpose**  
+Decide whether an action is allowed.
+
+**Responsibilities**
+- Permission evaluation
+- Ownership checks
+- Context-aware authorization logic
+- Support utilities for `@PreAuthorize` and method security
+
+**Depends on**
+- `security.identity`
+- `security.user`
+- `security.permission`
+- `security.session` (if ownership or scope is session-based)
+
+**Must not**
+- Authenticate users
+- Perform user persistence
+- Contain Spring Security plumbing
+
+This package focuses exclusively on **decision-making**.
+
+---
+
+### `security.provisioning` — External User & Role Population
+
+**Purpose**  
+Populate and synchronize WebAPI security data from external systems.
+
+**Responsibilities**
+- LDAP user and group imports
+- Group-to-role mapping logic
+- User pre-creation and synchronization
+
+**Depends on**
+- `security.user`
+- `security.permission`
+
+**Must not**
+- Authenticate users
+- Participate in request-time authorization
+
+This package operates outside the request/authorization path.
+
+---
+
+### `security.spring` — Spring Security Integration
+
+**Purpose**  
+Adapt WebAPI security concepts to Spring Security.
+
+**Responsibilities**
+- Spring `AuthenticationConverter` implementations
+- `GrantedAuthority` adapters
+- Spring-specific authorization evaluators
+- SecurityFilterChain wiring helpers
+
+**Depends on**
+- `security.authc`
+- `security.authz`
+- `security.identity`
+
+**Must not**
+- Contain business rules
+- Define permission semantics
+- Define user domain logic
+
+This package exists *because* Spring Security exists; no other package should depend on it.
+
+---
+
+## 3. Dependency Rules
+
+The following dependency rules define the **allowed direction of coupling** between security packages.
+
+### Core Dependency Flow
+
+```
+permission  ←  user  ←  identity  ←  authc
+      ↑           ↑        ↑          ↑
+      └──── authz ┘        └── session ┘
+```
+
+---
+
+### Allowed Dependencies
+
+- `permission` depends on nothing
+- `user` may depend on `permission`
+- `identity` may depend on `user`
+- `session` may depend on `identity` and `user`
+- `authz` may depend on `identity`, `user`, `permission`, and `session`
+- `authc` may depend on `identity` and `session`
+- `spring` may depend on all other security packages
+- `provisioning` may depend on `user` and `permission`
+
+---
+
+### Forbidden Dependencies
+
+- `user` → `authz`
+- `user` → `authc`
+- `permission` → any other package
+- `authz` → `authc`
+- Any package → `spring` (except `spring` itself)
+
+These rules ensure that:
+- Authorization remains pure decision logic
+- Authentication does not leak into user or permission modeling
+- Framework-specific code is isolated
+- Core security concepts remain reusable and testable
+
+---
+
+## 4. Usage Guidance
+
+This structure is intended to be created **up front**, even if some packages initially remain empty.
+
+During migration from Shiro to Spring Security:
+1. Classify existing classes by *capability*
+2. Place them into the appropriate package
+3. Refactor behavior only after classification is complete
+
+Following this guide ensures that the WebAPI security system remains understandable, extensible, and internally consistent over time.
+

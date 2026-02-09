@@ -1,0 +1,3 @@
+INSERT INTO sec_permission(id, "value")
+VALUES (NEXT VALUE FOR SEC_PERMISSION_SEQUENCE, '*');
+

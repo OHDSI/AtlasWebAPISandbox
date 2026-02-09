@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.spring_authn.authn.db;
+package org.ohdsi.sandbox.spring_authn.security.authc.db;
 
 import java.time.LocalDateTime;
 

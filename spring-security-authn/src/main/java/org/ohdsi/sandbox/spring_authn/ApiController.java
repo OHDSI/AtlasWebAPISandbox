@@ -2,7 +2,7 @@ package org.ohdsi.sandbox.spring_authn;
 
 import java.util.Map;
 
-import org.ohdsi.sandbox.spring_authn.authn.LoginService;
+import org.ohdsi.sandbox.spring_authn.security.authc.LoginService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
