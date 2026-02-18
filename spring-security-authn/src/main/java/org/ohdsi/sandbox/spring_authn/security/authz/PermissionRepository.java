@@ -1,4 +1,6 @@
-package org.ohdsi.sandbox.spring_authn.security.permission;
+package org.ohdsi.sandbox.spring_authn.security.authz;
+
+import java.util.Optional;
 
 import org.springframework.data.repository.CrudRepository;
 
@@ -7,6 +9,6 @@ import org.springframework.data.repository.CrudRepository;
  */
 public interface PermissionRepository extends CrudRepository<PermissionEntity, Long> {
 
-  public PermissionEntity findByValueIgnoreCase(String permission);
+  public Optional<PermissionEntity> findByValueIgnoreCase(String permission);
 
 }

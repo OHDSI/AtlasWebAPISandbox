@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 
+import org.ohdsi.sandbox.spring_authn.security.authz.AuthorizationService;
 import org.ohdsi.sandbox.spring_authn.security.session.SessionProperties;
 import org.ohdsi.sandbox.spring_authn.security.session.UserSessionStore;
 import org.slf4j.Logger;
@@ -29,37 +30,43 @@ public class LoginService {
   private final UserSessionStore sessionStore;
   private final JwtService jwtService;
   private final SessionProperties sessionProps;
+  private final AuthorizationService authorizationService;
 
   private static final Logger log = LoggerFactory.getLogger(LoginService.class);
 
   public LoginService(
       UserSessionStore sessionStore,
+      AuthorizationService authorizationService,
       JwtService jwtService,
       SessionProperties sessionProps) {
     this.sessionStore = sessionStore;
+    this.authorizationService = authorizationService;
     this.jwtService = jwtService;
     this.sessionProps = sessionProps;
   }
 
   public Result onSuccess(Authentication authentication) {
 
-    String username = authentication.getName();
-    log.info("LoginService: onSuccess: " + username);
+    String login = authentication.getName();
+    log.info("LoginService: onSuccess: " + login);
 
     String[] roles = authentication.getAuthorities().stream()
         .map(GrantedAuthority::getAuthority)
         .toArray(String[]::new);
 
+    // ensure the user exists
+    authorizationService.ensureUserExists(login, login, null, null);
+
     // Generate a unique session ID and store session
-    UUID sessionId = sessionStore.createSession(username);
+    UUID sessionId = sessionStore.createSession(login);
 
     // Calculate expiration for JWT (same as session)
     Instant expiresAt = Instant.now().plus(sessionProps.getExpiration());
 
     // mint the JWT
-    String jwt = jwtService.generateToken(username, sessionId.toString(), Date.from(expiresAt));
+    String jwt = jwtService.generateToken(login, sessionId.toString(), Date.from(expiresAt));
 
-    return new Result(username, jwt, roles, "Login successful");
+    return new Result(login, jwt, roles, "Login successful");
   }
 
   /**
@@ -91,6 +98,31 @@ public class LoginService {
     String jwt = jwtService.generateToken(currentJwt.getSubject(), sessionId.toString(), Date.from(expiresAt));
 
     return new Result(username, jwt, roles, "Refreshed Token in for session");
+  }
+
+  /**
+   * Revoke the session represented by the provided JWT authentication.
+   */
+  public Result logout(Authentication authentication) {
+    if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+      throw new BadCredentialsException("Invalid authentication type");
+    }
+
+    Jwt currentJwt = jwtAuth.getToken();
+    String sessionId = currentJwt.getClaimAsString("sid");
+
+    try {
+      sessionStore.revokeSession(UUID.fromString(sessionId));
+    } catch (IllegalArgumentException e) {
+      throw new BadCredentialsException("Invalid session id", e);
+    }
+
+    String username = currentJwt.getSubject();
+    String[] roles = authentication.getAuthorities().stream()
+        .map(GrantedAuthority::getAuthority)
+        .toArray(String[]::new);
+
+    return new Result(username, null, roles, "Logout successful");
   }
 
   // Since login service initiates sessions, it can determine the cleanup schedule

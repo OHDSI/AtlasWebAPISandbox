@@ -28,21 +28,9 @@ public class StubAuthDataSourceInitializer {
     // create schema
     ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
     populator.addScript(new ClassPathResource("stub/auth-schema.sql"));
+    // insert users
+    populator.addScript(new ClassPathResource("stub/auth-data.sql"));    
     populator.execute(authDataSource);
 
-    // insert users
-    jdbc.update("""
-        INSERT INTO auth_user
-        (username, password_hash, enabled, failed_attempts)
-        VALUES (?, ?, true, 0)
-        """,
-        "alice", "{noop}password1");
-
-    jdbc.update("""
-        INSERT INTO auth_user
-        (username, password_hash, enabled, failed_attempts)
-        VALUES (?, ?, true, 0)
-        """,
-        "bob", "{noop}password2");
   }
 }

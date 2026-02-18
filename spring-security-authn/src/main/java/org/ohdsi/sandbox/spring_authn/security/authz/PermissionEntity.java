@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.spring_authn.security.permission;
+package org.ohdsi.sandbox.spring_authn.security.authz;
 
 import java.io.Serializable;
 import java.util.LinkedHashSet;
@@ -11,9 +11,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Parameter;
-import org.ohdsi.sandbox.spring_authn.security.user.RolePermissionEntity;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.GenerationType;
 
 /**
  * Created by GMalikov on 24.08.2015.
@@ -25,19 +24,11 @@ public class PermissionEntity implements Serializable {
 
   private static final long serialVersionUID = 1810877985769153135L;
 
-  @Id
-  @Column(name = "ID")
-  @GenericGenerator(
-      name = "sec_permission_generator",
-      strategy = "org.hibernate.id.enhanced.SequenceStyleGenerator",
-      parameters = {
-          @Parameter(name = "sequence_name", value = "sec_permission_id_seq"),
-          @Parameter(name = "initial_value", value = "1000"),
-          @Parameter(name = "increment_size", value = "1")
-      }
-  )
-  @GeneratedValue(generator = "sec_permission_generator")
-  private Long id;
+    @Id
+    @Column(name = "ID")
+    @SequenceGenerator(name = "sec_permission_seq", sequenceName = "sec_permission_id_seq", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sec_permission_seq")
+    private Long id;
 
   @Column(name = "VALUE")
   private String value;

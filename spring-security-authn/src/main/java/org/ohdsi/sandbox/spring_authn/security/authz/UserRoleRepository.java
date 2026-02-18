@@ -1,6 +1,8 @@
-package org.ohdsi.sandbox.spring_authn.security.user;
+package org.ohdsi.sandbox.spring_authn.security.authz;
 
 import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.repository.CrudRepository;
 
 /**
@@ -11,12 +13,10 @@ public interface UserRoleRepository extends CrudRepository<UserRoleEntity, Long>
 
   public List<UserRoleEntity> findByUser(UserEntity user);
 
-  public UserRoleEntity findByUserAndRole(UserEntity user, RoleEntity role);
-
-  public List<UserRoleEntity> findByStatusIgnoreCase(String status);
+  public Optional<UserRoleEntity> findByUserAndRole(UserEntity user, RoleEntity role);
 
   public List<UserRoleEntity> findByUserId(Long userId);
 
-  public UserRoleEntity findByUserIdAndRoleId(Long userId, Long roleId);
+  public Optional<UserRoleEntity> findByUserIdAndRoleId(Long userId, Long roleId);
 
 }

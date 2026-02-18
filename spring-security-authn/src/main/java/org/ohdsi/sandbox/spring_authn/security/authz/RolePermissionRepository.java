@@ -1,8 +1,7 @@
-package org.ohdsi.sandbox.spring_authn.security.user;
+package org.ohdsi.sandbox.spring_authn.security.authz;
 
 import java.util.List;
 
-import org.ohdsi.sandbox.spring_authn.security.permission.PermissionEntity;
 import org.springframework.data.repository.CrudRepository;
 
 /**

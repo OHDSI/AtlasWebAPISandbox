@@ -1,4 +1,4 @@
-package org.ohdsi.sandbox.spring_authn.security.user;
+package org.ohdsi.sandbox.spring_authn.security.authz;
 
 import java.io.Serializable;
 import java.util.LinkedHashSet;
@@ -11,8 +11,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.Parameter;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.GenerationType;
 
 /**
  * Created by GMalikov on 24.08.2015.
@@ -26,16 +26,8 @@ public class RoleEntity implements Serializable{
 
   @Id
   @Column(name = "ID")
-  @GenericGenerator(
-    name = "sec_role_generator",
-    strategy = "org.hibernate.id.enhanced.SequenceStyleGenerator",
-    parameters = {
-      @Parameter(name = "sequence_name", value = "sec_role_sequence"),
-      @Parameter(name = "initial_value", value = "1000"),
-      @Parameter(name = "increment_size", value = "1")
-    }
-  )
-  @GeneratedValue(generator = "sec_role_generator")
+  @SequenceGenerator(name = "sec_role_seq", sequenceName = "sec_role_sequence", allocationSize = 1)
+  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sec_role_seq")
   private Long id;
 
   @Column(name = "NAME")

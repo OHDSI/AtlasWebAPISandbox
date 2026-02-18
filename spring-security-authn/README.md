@@ -35,7 +35,7 @@ Sections below will describe in detail each of the implementations.
 
 In addition, although this project focuses on the authentication, there will be an example controller that shows how method-level security (via `@PreAuthorize`) can be applied to methods to do authorization.  But Authorization is beyond the scope of this sandbox.
 
-# Class Organization
+# Spring Security Authentication
 
 Spring Security handles authentication by starting with a SecurityFilterChain that sets up the default filters, and the developer injects custom filters to handle the appropriate authentication type.  So, a typical authentication implementation will have a {AuthType}AuthConfig (that configures a security chain), an Authentication Manager/Provider to perform the authentication, and a Filter (optional) to handle any request/response orchastration.  
 
@@ -296,7 +296,896 @@ Migrating to a two-token architecture will be a significant change in behavior f
   - If access token is stolen → attacker only has a 10–15 min window.  
   - If refresh token is stolen → you can revoke it centrally.  
 
-# Proof-of-Concept Implmentation Details
+### POC token strategy and migration plan
+
+This sandbox demonstrates a single-token flow for simplicity: the JWT issued at login contains a `sid` claim that maps to a server-side `sec_user_session` row. For short-term testing and to keep the demo compact we mint a single JWT per login and validate it against the session store on each request.
+
+For production, prefer the two-token pattern described above: short-lived access tokens (JWT) and long-lived refresh tokens stored/validated server-side. A migration path is:
+- Start with short-lived access tokens + server-side session records (what this POC shows).
+- Introduce refresh tokens stored in a secure DB or token store and use them to mint new short-lived access tokens.
+- Move signing key material into a secrets manager / KMS and adopt asymmetric signing (RS256) with a published JWKs endpoint for cross-instance validation.
+
+# JWT Authentication
+
+It is intended that this POC demonstrates the same flow that will be used in Altlas 3.x for minting JWTs.  After a user logs in through one of the provided authentication providers, they will get a newly minted JWT that is returned in the response, which will be used in the Authorization: header as Bearer <token>.
+
+Some of the JWT safeguards are described and demonstated in this POC, including storage of secrets, and utilizing private/pubic key-pairs to mint JWTs.
+
+## Configuration and RS256 demo notes
+
+Configuration (application.yaml):
+
+```
+security:
+  jwt:
+    # Algorithm: HS256 (symmetric) or RS256 (asymmetric). Default: HS256
+    algorithm: HS256
+    # HS256 secret (for development only). In production, inject via env or secrets manager.
+    secret: super-secret-key-super-secret-key
+    # RS256 key paths (PEM files). Leave empty when using HS256.
+    rsa:
+      private-key-path: ""
+      public-key-path: ""
+    # Optional key id to include in JWT header when using RS256
+    kid: ""
+```
+
+### How RS256 keys are loaded (demo)
+
+- This POC supports `RS256` when `security.jwt.algorithm` is set to `RS256` and
+  the PEM paths are provided. At startup the application reads the private key
+  PEM (`security.jwt.rsa.private-key-path`) as a PKCS#8 private key and the
+  public key PEM (`security.jwt.rsa.public-key-path`) as an X.509 public key.
+  The encoder publishes a small JWK containing the public key (and optional
+  `kid`) so other services can validate tokens.
+
+Quick way to generate a keypair for local testing (OpenSSL):
+
+```bash
+# generate a 2048-bit RSA private key (PKCS#8)
+openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt_private.pem
+
+# extract the public key (X.509 PEM)
+openssl rsa -pubout -in jwt_private.pem -out jwt_public.pem
+```
+
+- Set `security.jwt.rsa.private-key-path` to the path of `jwt_private.pem` and
+  `security.jwt.rsa.public-key-path` to `jwt_public.pem`, then set
+  `security.jwt.algorithm: RS256` to enable RS256 for signing.
+
+Notes:
+- For local development the HS256 secret remains the simplest option, but do
+  not commit production secrets into the repo — use environment variables or
+  a secrets manager. For production, prefer RS256 with private keys stored in
+  a secure KMS and public keys published via a JWKs endpoint to allow safe
+  cross-instance validation and key rotation.
+
+### Kid (Key ID) explanation
+
+When using asymmetric keys (RS256) tokens often include a `kid` (key id) in
+the JWT header. The `kid` is an opaque identifier that tells token validators
+which public key to use for signature verification. In this POC:
+
+- If `security.jwt.kid` is set, the encoder will place that value into the
+  token `kid` header. This makes tokens self-describing about which signing
+  key was used.
+- The simple `jwtDecoderRs` bean in this demo validates tokens using the
+  single configured public key (`security.jwt.rsa.public-key-path`). That
+  means the `kid` is recorded on the token but the decoder here does not
+  dynamically select keys by `kid` — it just verifies against the configured
+  public key.
+
+For production you should publish a JWKs endpoint (a JSON Web Key Set) and
+configure resource servers (or `NimbusJwtDecoder`) to fetch the JWKs. With a
+JWKs-backed decoder the `kid` in the token header is used to select the
+matching public key from the JWKs set, which enables safe key rotation and
+multiple active keys. Example flow:
+
+- Auth service signs tokens with the private key and includes `kid` in the
+  header.
+- Auth service publishes a JWKs endpoint (e.g. `https://auth.example.com/.well-known/jwks.json`) containing public keys mapped to `kid` values.
+- Resource servers configure a JWKs-aware `JwtDecoder` that fetches the set
+  and resolves the correct public key by `kid` when verifying tokens.
+
+Application YAML example (kid shown):
+
+```
+security:
+  jwt:
+    algorithm: RS256
+    rsa:
+      private-key-path: /run/secrets/jwt_private.pem
+      public-key-path: /run/secrets/jwt_public.pem
+    kid: demo-key-1
+```
+
+To enable a JWKs-backed decoder (recommended for production):
+
+- **Set a JWKs URI:** Configure `security.jwt.jwk-set-uri` to point to your
+  authentication server's JWKs endpoint (for example,
+  `https://auth.example.com/.well-known/jwks.json`). The runtime will use a
+  `NimbusJwtDecoder` that fetches the JWK Set and resolves public keys by
+  `kid` automatically.
+- **Fallback vs. primary key:** You can keep `security.jwt.rsa.public-key-path`
+  as a local fallback during dev, but in production prefer the JWKs URI so key
+  rotation works across instances.
+- **Cache/refresh settings:** Tune the JWKs caching/refresh behavior in the
+  decoder (or via your HTTP cache headers) to balance rotation latency and
+  request performance.
+- **Token header:** Ensure the issuer sets a `kid` header on tokens to allow
+  the decoder to select the correct key from the JWK Set.
+
+Example (production-ready) decoder snippet (tunables shown):
+
+```java
+// connectTimeoutMs, readTimeoutMs, sizeLimit
+ResourceRetriever resourceRetriever = new DefaultResourceRetriever(2000, 2000, 1024 * 1024);
+RemoteJWKSet<SecurityContext> remoteJWKSet = new RemoteJWKSet<>(new URL("https://auth.example.com/.well-known/jwks.json"), resourceRetriever);
+
+ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+JWSKeySelector<SecurityContext> keySelector = new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, remoteJWKSet);
+jwtProcessor.setJWSKeySelector(keySelector);
+
+// Spring's NimbusJwtDecoder wraps the configured Nimbus processor
+JwtDecoder decoder = new NimbusJwtDecoder(jwtProcessor);
+```
+
+YAML example (add to `application.yaml`):
+
+```yaml
+security:
+  jwt:
+    jwk-set-uri: https://auth.example.com/.well-known/jwks.json
+```
+
+Decoder selection notes:
+
+- **Selection order:** When the application starts the active `JwtDecoder` is chosen as follows:
+  1. If `security.jwt.algorithm=RS256` and `security.jwt.jwk-set-uri` is set → the JWKs-backed decoder is used (preferred).
+  2. Else if `security.jwt.algorithm=RS256` and a local `security.jwt.rsa.public-key-path` is configured → the local RS256 public-key decoder is used.
+  3. Else (default) → the HS256 symmetric-secret decoder is used.
+- **Avoiding ambiguity:** The configuration is written so the JWKs-backed decoder is preferred when present; you should avoid configuring contradictory options in production (e.g., both `jwk-set-uri` and a local public key) unless you understand the precedence.
+
+# WebAPI Security Package Structure & Dependency Guide
+
+This section defines the **intentional package structure** for the
+`org.ohdsi.webapi.security` subsystem and the **dependency rules** that govern
+how those packages interact.
+
+The goal of this structure is to ensure that the *package tree itself documents
+the security architecture* of WebAPI, making it possible to understand what the
+system does by reading the folder structure — without needing to know which
+classes are DTOs, repositories, or converters.
+
+This structure reflects the decision that **users, roles, and permissions are
+all part of a single authorization bounded context**, while authentication,
+identity resolution, and framework integration remain separate concerns.
+
+This structure is designed to support the ongoing migration from Shiro to Spring
+Security while keeping the security model coherent, testable, and evolvable.
+
+---
+
+## 1. Package Overview
+
+The security subsystem is organized around **capabilities**, not technical
+layers.
+
+```
+org.ohdsi.webapi.security
+ ├─ authc
+ ├─ authz
+ ├─ identity
+ ├─ session
+ ├─ provisioning
+ └─ spring
+```
+
+Each package represents a distinct responsibility within the WebAPI security
+model.
+
+---
+
+## 2. Package Responsibilities
+
+### `security` (root)
+
+**Purpose**  
+Defines the boundary of the security subsystem.
+
+**Responsibilities**
+- High-level security configuration aggregation
+- Cross-cutting security constants
+- Base security exceptions
+- Security-related documentation
+
+**Must not**
+- Implement authentication mechanisms
+- Make authorization decisions
+- Contain persistence logic
+
+This package acts as the *index and entry point* for security.
+
+---
+
+### `security.authc` — Authentication
+
+**Purpose**  
+Establish identity for a request.
+
+**Responsibilities**
+- Login endpoints
+- Credential validation
+- JWT, database, or LDAP authentication mechanisms
+- Authentication-specific configuration
+- Initial identity establishment
+
+**Depends on**
+- `security.identity`
+- `security.session`
+- `security.spring`
+
+**Must not**
+- Evaluate permissions
+- Perform authorization decisions
+- Contain role or permission logic
+
+Subpackages such as `authc.db`, `authc.jwt`, or `authc.ldap` are encouraged when
+authentication mechanisms have distinct behavior.
+
+---
+
+### `security.identity` — Request Identity Resolution
+
+**Purpose**  
+Guarantee that every request resolves to a WebAPI user identity.
+
+**Responsibilities**
+- Mapping Spring Security context to a WebAPI user key
+- Anonymous identity resolution
+- Identity invariants (e.g., username uniqueness, sentinel user identities)
+- Bridging authentication/session context to authorization identity
+
+**Depends on**
+- `security.authz`
+- `security.session` (if session-backed identity is used)
+
+**Must not**
+- Define permissions or roles
+- Make authorization decisions
+- Implement authentication mechanisms
+
+This package should remain small and focused.
+
+---
+
+### `security.session` — Session Management
+
+**Purpose**  
+Maintain continuity of identity across requests.
+
+**Responsibilities**
+- Session creation and lookup
+- Session persistence
+- Session lifecycle management
+- Session-to-identity association
+- Anonymous session handling
+
+**Depends on**
+- `security.identity`
+- `security.authz`
+
+**Must not**
+- Authenticate credentials
+- Evaluate permissions
+- Implement authorization logic
+
+The existence of this package explicitly documents that WebAPI has a durable
+concept of a session.
+
+---
+
+### `security.authz` — Authorization (Users, Roles, Permissions)
+
+**Purpose**  
+Define and enforce **who may do what** in WebAPI.
+
+This package is the **authorization bounded context** and owns *all* concepts
+related to authorization: users, roles, permissions, and the relationships
+between them.
+
+**Responsibilities**
+- User entities and persistence (as security actors)
+- Role entities and persistence
+- Permission entities and representation
+- User–role and role–permission associations
+- Creation and management of system roles and user-defined roles
+- Creation and assignment of a user’s *personal role*
+- Permission wildcard parsing and implication logic
+- Resolution of a user’s effective permission set
+- Authorization policy orchestration
+- Caching and invalidation of authorization state
+- Public authorization façade (e.g., `AuthorizationService`)
+
+**Internal Structure**
+- Most services and entities are **package-private**
+- Only the authorization façade and DTOs are public
+- Package-private services collaborate freely within `authz`
+
+**Depends on**
+- Nothing within `security` (core domain)
+- Optionally `security.session` if authorization is session-scoped
+
+**Must not**
+- Authenticate credentials
+- Depend on Spring Security APIs directly
+- Contain framework-specific wiring
+
+This package defines **what authorization means** in WebAPI and is the single
+source of truth for authorization behavior.
+
+---
+
+### `security.provisioning` — External User & Role Population
+
+**Purpose**  
+Populate and synchronize WebAPI authorization data from external systems.
+
+**Responsibilities**
+- LDAP user and group imports
+- Group-to-role mapping logic
+- User pre-creation and synchronization
+- External role and permission seeding
+
+**Depends on**
+- `security.authz`
+
+**Must not**
+- Authenticate users
+- Participate in request-time authorization decisions
+
+This package operates outside the request/authorization path.
+
+---
+
+### `security.spring` — Spring Security Integration
+
+**Purpose**  
+Adapt WebAPI security concepts to Spring Security.
+
+**Responsibilities**
+- Spring `AuthenticationConverter` implementations
+- `GrantedAuthority` adapters
+- Spring-specific authorization evaluators
+- `SecurityFilterChain` wiring helpers
+- Bridging Spring Security to `authc`, `identity`, and `authz`
+
+**Depends on**
+- `security.authc`
+- `security.identity`
+- `security.authz`
+- `security.session`
+
+**Must not**
+- Contain business rules
+- Define authorization semantics
+- Define user, role, or permission behavior
+
+This package exists *because* Spring Security exists; no other package should
+depend on it.
+
+---
+
+## 3. Dependency Rules
+
+The following dependency rules define the **allowed direction of coupling**
+between security packages.
+
+### Core Dependency Flow
+
+```
+authz  ←  identity  ←  authc
+  ↑          ↑
+  └── session ┘
+```
+
+```
+authz  ←  provisioning
+```
+
+```
+spring → authc / identity / authz / session
+```
+
+---
+
+### Allowed Dependencies
+
+- `authz` depends on nothing within `security`
+- `identity` may depend on `authz`
+- `session` may depend on `identity` and `authz`
+- `authc` may depend on `identity` and `session`
+- `provisioning` may depend on `authz`
+- `spring` may depend on all other security packages
+
+---
+
+### Forbidden Dependencies
+
+- `authz` → `authc`
+- `authz` → `spring`
+- `identity` → `authc`
+- `authc` → `authz`
+- Any non-`spring` package → `spring`
+
+These rules ensure that:
+- Authorization remains a pure, framework-agnostic domain
+- Authentication does not leak into authorization modeling
+- Identity resolution remains a narrow translation layer
+- Framework-specific code is fully isolated
+
+---
+
+## 4. Usage Guidance
+
+This structure is intended to be created **up front**, even if some packages
+initially remain empty.
+
+During migration from Shiro to Spring Security:
+
+1. Classify existing classes by *capability*
+2. Place them into the appropriate package
+3. Preserve behavior while restructuring
+4. Refactor logic only after boundaries are stable
+
+Only the public authorization façade (e.g., `AuthorizationService`) should be
+used by controllers and external callers.
+
+All other classes inside `security.authz` are internal implementation details
+and may change without notice.
+
+Following this guide ensures that the WebAPI security system remains
+understandable, extensible, and internally consistent over time.
+
+
+This section defines the **intentional package structure** for the `org.ohdsi.webapi.security` subsystem and the **dependency rules** that govern how those packages interact.
+
+The goal of this structure is to ensure that the *package tree itself documents the security architecture* of WebAPI, making it possible to understand what the system does by reading the folder structure — without needing to know which classes are DTOs, repositories, or converters.
+
+This structure is designed to support the ongoing migration from Shiro to Spring Security while keeping the security model coherent, testable, and evolvable.
+
+---
+
+## 1. Package Overview
+
+The security subsystem is organized around **capabilities**, not technical layers.
+
+```
+org.ohdsi.webapi.security
+ ├─ authc
+ ├─ authz
+ ├─ identity
+ ├─ session
+ ├─ user
+ ├─ permission
+ ├─ provisioning
+ └─ spring
+```
+
+Each package represents a distinct responsibility within the WebAPI security model.
+
+---
+
+## 2. Package Responsibilities
+
+### `security` (root)
+
+**Purpose**  
+Defines the boundary of the security subsystem.
+
+**Responsibilities**
+- High-level security configuration aggregation
+- Cross-cutting security constants
+- Base security exceptions
+- Security-related documentation
+
+**Must not**
+- Implement authentication mechanisms
+- Make authorization decisions
+- Contain persistence logic
+
+This package acts as the *index and entry point* for security.
+
+---
+
+### `security.authc` — Authentication
+
+**Purpose**  
+Establish identity for a request.
+
+**Responsibilities**
+- Login endpoints
+- Credential validation
+- JWT, database, or LDAP authentication mechanisms
+- Authentication-specific configuration
+- Initial identity establishment
+
+**Depends on**
+- `security.identity`
+- `security.session`
+- `security.spring`
+
+**Must not**
+- Evaluate permissions
+- Perform authorization decisions
+- Contain permission logic
+
+Subpackages such as `authc.db`, `authc.jwt`, or `authc.ldap` are encouraged when authentication mechanisms have distinct behavior.
+
+---
+
+### `security.identity` — Request Identity Resolution
+
+**Purpose**  
+Guarantee that every request resolves to a WebAPI user identity.
+
+**Responsibilities**
+- Mapping Spring Security context to a WebAPI user key
+- Anonymous identity resolution
+- Identity invariants (e.g., username uniqueness, sentinel user IDs)
+- Bridging authentication/session context to user resolution
+
+**Depends on**
+- `security.user`
+- `security.session` (if session-backed identity is used)
+
+**Must not**
+- Define permissions
+- Make authorization decisions
+- Implement authentication mechanisms
+
+This package should remain small and focused.
+
+---
+
+### `security.session` — Session Management
+
+**Purpose**  
+Maintain continuity of identity across requests.
+
+**Responsibilities**
+- Session creation and lookup
+- Session persistence
+- Session lifecycle management
+- Session-to-identity association
+- Anonymous session handling
+
+**Depends on**
+- `security.identity`
+- `security.user`
+
+**Must not**
+- Authenticate credentials
+- Evaluate permissions
+- Implement authorization logic
+
+The existence of this package explicitly documents that WebAPI has a durable concept of a session.
+
+---
+
+### `security.user` — User Domain
+
+**Purpose**  
+Define what a WebAPI user is and how users participate in the security system.
+
+This package models **users as security actors** whose interactions with WebAPI are authorized via roles and permissions defined elsewhere. Users do not define permissions; they *hold references* to roles.
+
+**Responsibilities**
+- User entity and persistence
+- User repositories
+- User lifecycle services (ensure user exists, registration, lookup)
+- Association of users to roles
+- Creation and assignment of a user’s *personal role* during registration
+- Definition of the anonymous user as a first-class user (e.g., username `anonymous`, id `-1`)
+- Resolution of the user’s effective role set (not permission semantics)
+
+**Depends on**
+- `security.permission` (roles and permissions are referenced, not owned)
+
+**Must not**
+- Define roles or permissions
+- Contain permission semantics or implication logic
+- Make authorization decisions
+- Depend on Spring Security internals
+- Parse credentials or authentication tokens
+
+This package is responsible for **who the user is** and **which roles they hold**, not for what those roles mean.
+
+---
+
+### `security.permission` — Roles & Permission Semantics
+
+**Purpose**  
+Define how permissions are represented, grouped, and interpreted in WebAPI.
+
+This package models the **authorization vocabulary** of the system: permissions and the roles that group them. Roles exist independently of users and are the primary abstraction for permission assignment.
+
+**Responsibilities**
+- Permission entities and representation
+- Role entities and repositories
+- Role–permission associations
+- Permission wildcard parsing
+- Permission implication and comparison logic
+- Role metadata (e.g., system-created vs user-created roles)
+- Services for creating, modifying, and managing roles and permissions
+
+**Depends on**
+- Nothing within `security`
+
+**Must not**
+- Know which users hold which roles
+- Depend on user lifecycle concepts
+- Make authorization decisions
+- Depend on Spring Security or persistence consumers outside this package
+
+This package defines **what permissions and roles are**, not **who has them**.
+
+---
+
+### `security.authz` — Authorization
+
+**Purpose**  
+Decide whether an action is allowed.
+
+**Responsibilities**
+- Permission evaluation
+- Ownership checks
+- Context-aware authorization logic
+- Support utilities for `@PreAuthorize` and method security
+
+**Depends on**
+- `security.identity`
+- `security.user`
+- `security.permission`
+- `security.session` (if ownership or scope is session-based)
+
+**Must not**
+- Authenticate users
+- Perform user persistence
+- Contain Spring Security plumbing
+
+This package focuses exclusively on **decision-making**.
+
+---
+
+### `security.provisioning` — External User & Role Population
+
+**Purpose**  
+Populate and synchronize WebAPI security data from external systems.
+
+**Responsibilities**
+- LDAP user and group imports
+- Group-to-role mapping logic
+- User pre-creation and synchronization
+
+**Depends on**
+- `security.user`
+- `security.permission`
+
+**Must not**
+- Authenticate users
+- Participate in request-time authorization
+
+This package operates outside the request/authorization path.
+
+---
+
+### `security.spring` — Spring Security Integration
+
+**Purpose**  
+Adapt WebAPI security concepts to Spring Security.
+
+**Responsibilities**
+- Spring `AuthenticationConverter` implementations
+- `GrantedAuthority` adapters
+- Spring-specific authorization evaluators
+- SecurityFilterChain wiring helpers
+
+**Depends on**
+- `security.authc`
+- `security.authz`
+- `security.identity`
+
+**Must not**
+- Contain business rules
+- Define permission semantics
+- Define user domain logic
+
+This package exists *because* Spring Security exists; no other package should depend on it.
+
+---
+
+## 3. Dependency Rules
+
+The following dependency rules define the **allowed direction of coupling** between security packages.
+
+### Core Dependency Flow
+
+```
+permission  ←  user  ←  identity  ←  authc
+      ↑           ↑        ↑          ↑
+      └──── authz ┘        └── session ┘
+```
+
+---
+
+### Allowed Dependencies
+
+- `permission` depends on nothing
+- `user` may depend on `permission`
+- `identity` may depend on `user`
+- `session` may depend on `identity` and `user`
+- `authz` may depend on `identity`, `user`, `permission`, and `session`
+- `authc` may depend on `identity` and `session`
+- `spring` may depend on all other security packages
+- `provisioning` may depend on `user` and `permission`
+
+---
+
+### Forbidden Dependencies
+
+- `user` → `authz`
+- `user` → `authc`
+- `permission` → any other package
+- `authz` → `authc`
+- Any package → `spring` (except `spring` itself)
+
+These rules ensure that:
+- Authorization remains pure decision logic
+- Authentication does not leak into user or permission modeling
+- Framework-specific code is isolated
+- Core security concepts remain reusable and testable
+
+---
+
+## 4. Usage Guidance
+
+This structure is intended to be created **up front**, even if some packages initially remain empty.
+
+During migration from Shiro to Spring Security:
+1. Classify existing classes by *capability*
+2. Place them into the appropriate package
+3. Refactor behavior only after classification is complete
+
+Following this guide ensures that the WebAPI security system remains understandable, extensible, and internally consistent over time.
+
+# Authorization & Domain Boundary Decisions (WebAPI 3.x) (Aka:  Controller-Service-Repository Structure)
+
+## Context
+
+WebAPI 2.x evolved organically and blended HTTP concerns, persistence entities,
+authorization logic, and workflow orchestration within the same classes.
+This made the system difficult to reason about during modernization
+(Spring Boot 3.x, Spring Security, JDK 21).
+
+
+While this topic deserves its own Sandbox Project to demonstrate the separation of layers (controller/service/repository), it was necessary
+to introduce the concept in this Sandbox Project so it would be applied to the security migration work.
+
+This document captures decisions made to clarify boundaries and guide refactoring.
+
+---
+
+## Decision 1: JPA Entities Are Persistence-Only
+
+**JPA entities (`UserEntity`, `RoleEntity`, `PermissionEntity`, etc.) are treated as
+internal implementation details of domain services.**
+
+They must:
+- Never be returned from services
+- Never be stored in the security context
+- Never be used by controllers
+- Never leak outside the domain package
+
+Repositories may only be accessed by the owning domain service.
+
+**Rationale**
+- Prevents transaction and session leakage
+- Avoids lazy-loading bugs
+- Decouples authorization from persistence structure
+- Enables safe caching and security evaluation
+
+---
+
+## Decision 2: Domain Services Own Business Logic
+
+Classes such as `PermissionManager` are considered **domain services**, even if
+their names predate this decision.
+
+Domain services:
+- Coordinate repositories
+- Enforce business rules
+- Publish domain events
+- Define transaction boundaries
+
+They do **not** expose entities.
+
+---
+
+## Decision 3: Explicit Mapping, No Global ConversionService
+
+Entity-to-domain and entity-to-value-object mappings are explicit and local.
+
+Allowed patterns:
+- Static factory methods on domain models
+- Package-private mapper classes
+
+Spring’s `ConversionService` is **not** used for domain boundaries.
+
+**Rationale**
+- Keeps mappings discoverable
+- Avoids hidden magic
+- Improves IDE navigation and refactoring safety
+
+---
+
+## Decision 4: Authorization Results Are Value Objects
+
+Authorization data is materialized as **pure value objects**, not domain models.
+
+Current representation:
+```java
+Set<String> permissions
+```
+
+This represents computed authorization facts only.
+
+Identity information (username, userId) lives exclusively in:
+- `Principal`
+- `Authentication`
+
+**Rationale**
+- Aligns with Spring Security’s model
+- Prevents duplication of identity data
+- Keeps authorization deterministic and serializable
+
+---
+
+## Decision 5: Optional AuthorizationInfo Wrapper
+
+If additional authorization metadata is required in the future (e.g. origin,
+approval state, computation timestamp), it may be introduced as a value object:
+
+```java
+AuthorizationInfo {
+  Set<String> permissions;
+  ...
+}
+```
+
+This object must **not** include identity fields such as username or userId.
+
+---
+
+## Decision 6: Controllers vs Services
+
+Controllers:
+- Handle HTTP concerns only
+- Do not contain business logic
+- Do not access repositories
+- Do not work with entities
+
+Services:
+- Contain workflow and domain logic
+- Define transactional boundaries
+- Return domain models or value objects
+
+This separation is enforced incrementally during refactoring.
+
+---
+
+
+# Authentication Implmentation Details
 
 The following sections describe specific details about the particular authentication implementation in the topic.  To avoid environment pollution with `@Bean` that only have one istance in one context (many authentication filters will be like this), we create local instances of classes to support the authentication method, and inject any bean that might need to be shared across contexts.
 
@@ -337,11 +1226,16 @@ For proof-of-concept purposes, a stub authentication data source is provided usi
 
 The authentication database is initialized at application startup using a simple schema and a small set of seed users. The schema is created by executing a SQL script (auth-schema.sql) via Spring’s ResourceDatabasePopulator, ensuring the required auth_user table exists before authentication begins. Two example users are inserted into the table with enabled accounts and zero failed login attempts:
 
-Username: alice
-Password: password1
+### Seed users (authentication DB stub)
 
-Username: bob
-Password: password2
+The embedded authentication stub seeds a few example users for testing. Use these credentials with the database login endpoint (e.g. `/user/login/db`).
+
+| Username | Password  | Notes |
+|---|---|---|
+| alice | password1 | no default permissions — useful for testing user registration |
+| bob | password2 | owns a cohort (has entity-level access) |
+| writeuser | password1 | global write permission (used for testing write-level access) |
+
 
 These accounts provide a predictable baseline for validating database authentication behavior, including credential verification, failed login tracking, and account lockout enforcement.
 
@@ -434,6 +1328,24 @@ WebAPI uses JWTs (JSON Web Tokens) for authentication. Each token is minted upon
 
 The approach described here decouples JWT handling from session management while storing sessions in a database for persistence and easier maintenance.
 
+## Session lifecycle (login → activity → logout)
+
+- Login: user authenticates (DB/LDAP/Windows) and `LoginService.onSuccess()` is called.
+  - A `sec_user_session` row is created via `UserSessionStore.createSession()` with `sessionId`, `username`, `createdAt`, `expiresAt`, and `revoked=false`.
+  - A JWT is minted by `JwtService.generateToken(...)` and contains a `sid` claim referencing the `sessionId`.
+
+- Activity / Request validation:
+  - The resource filter chain decodes the JWT and `JwtToWebApiAuthenticationConverter` validates the session by calling `UserSessionStore.isSessionValid(username, sessionId)`.
+  - If the session is missing, expired, or revoked, authentication fails and the request is rejected.
+
+- Logout / Revocation:
+  - Clients should call `POST /user/logout` (added in this demo) with their Bearer JWT.
+  - The controller delegates to `LoginService.logout(...)` which revokes the session in the DB (`UserSessionStore.revokeSession(sessionId)`), making any outstanding JWTs invalid.
+
+- Cleanup:
+  - A scheduled task (`LoginService.cleanupSessions`) runs at `sessionProperties.cleanupInterval` and deletes expired sessions from `sec_user_session`.
+
+This design demonstrates how to implement token revocation and single-login behavior without changing the JWT format — the server validates the `sid` claim against a DB-backed session store on every request.
 
 #### 1. Session Creation
 
@@ -657,306 +1569,437 @@ This ensures that:
 - When single-login is disabled, multiple sessions can coexist, and the system tracks each session independently with its own expiration timestamp.
 - Logging and database persistence remain consistent regardless of single-login mode, so the cleanup and session validation mechanisms work identically in both scenarios.
 
-# Package Structure for WebAPI Security
 
-# WebAPI Security Package Structure & Dependency Guide
+# Authorization Implementation
 
-This section defines the **intentional package structure** for the `org.ohdsi.webapi.security` subsystem and the **dependency rules** that govern how those packages interact.
+This section describes the authorization architecture implemented to support fine-grained access control in WebAPI using Spring Security's `@PreAuthorize` annotation with custom SpEL (Spring Expression Language) expressions.
 
-The goal of this structure is to ensure that the *package tree itself documents the security architecture* of WebAPI, making it possible to understand what the system does by reading the folder structure — without needing to know which classes are DTOs, repositories, or converters.
+## Overview
 
-This structure is designed to support the ongoing migration from Shiro to Spring Security while keeping the security model coherent, testable, and evolvable.
+WebAPI uses a **two-tier permission system**:
 
----
+1. **Global Permissions** (wildcard-based) - Stored in `sec_permission` table and evaluated via `WildcardPermission` class
+   - Examples: `*`, `read`, `write`, `read:cohort`, `write:cohort`
+   - Used for broad entitlements (e.g., "admin can write everything")
 
-## 1. Package Overview
+2. **Entity-Level Access** - Stored in `{entity}_sec` tables (e.g., `cohort_definition_sec`)
+   - Tracks specific user access per entity (READ, WRITE)
+   - Used for granular permissions on user-created content
+   - Prevents permission explosion (20k+ cohort definitions, 30k+ concept sets)
 
-The security subsystem is organized around **capabilities**, not technical layers.
+## Architecture
+
+### Core Components
 
 ```
-org.ohdsi.webapi.security
- ├─ authc
- ├─ authz
- ├─ identity
- ├─ session
- ├─ user
- ├─ permission
- ├─ provisioning
- └─ spring
+@PreAuthorize SpEL Expression
+    ↓
+WebApiSecurityExpressionRoot (SpEL entry points)
+    ↓
+AuthorizationService (coordination + future caching)
+    ↓
+EntityAccessService (encapsulates entity-specific access checks)
+    ↓
+{Entity}AccessRepository (JPA repositories for {entity}_sec tables)
 ```
 
-Each package represents a distinct responsibility within the WebAPI security model.
+### Design Principles
 
----
+#### 1. Explicit Security Rules
+All security rules are visible at the `@PreAuthorize` annotation level. Avoid hiding authorization logic in helper methods that obscure the actual access conditions.
 
-## 2. Package Responsibilities
-
-### `security` (root)
-
-**Purpose**  
-Defines the boundary of the security subsystem.
-
-**Responsibilities**
-- High-level security configuration aggregation
-- Cross-cutting security constants
-- Base security exceptions
-- Security-related documentation
-
-**Must not**
-- Implement authentication mechanisms
-- Make authorization decisions
-- Contain persistence logic
-
-This package acts as the *index and entry point* for security.
-
----
-
-### `security.authc` — Authentication
-
-**Purpose**  
-Establish identity for a request.
-
-**Responsibilities**
-- Login endpoints
-- Credential validation
-- JWT, database, or LDAP authentication mechanisms
-- Authentication-specific configuration
-- Initial identity establishment
-
-**Depends on**
-- `security.identity`
-- `security.session`
-- `security.spring`
-
-**Must not**
-- Evaluate permissions
-- Perform authorization decisions
-- Contain permission logic
-
-Subpackages such as `authc.db`, `authc.jwt`, or `authc.ldap` are encouraged when authentication mechanisms have distinct behavior.
-
----
-
-### `security.identity` — Request Identity Resolution
-
-**Purpose**  
-Guarantee that every request resolves to a WebAPI user identity.
-
-**Responsibilities**
-- Mapping Spring Security context to a WebAPI user key
-- Anonymous identity resolution
-- Identity invariants (e.g., username uniqueness, sentinel user IDs)
-- Bridging authentication/session context to user resolution
-
-**Depends on**
-- `security.user`
-- `security.session` (if session-backed identity is used)
-
-**Must not**
-- Define permissions
-- Make authorization decisions
-- Implement authentication mechanisms
-
-This package should remain small and focused.
-
----
-
-### `security.session` — Session Management
-
-**Purpose**  
-Maintain continuity of identity across requests.
-
-**Responsibilities**
-- Session creation and lookup
-- Session persistence
-- Session lifecycle management
-- Session-to-identity association
-- Anonymous session handling
-
-**Depends on**
-- `security.identity`
-- `security.user`
-
-**Must not**
-- Authenticate credentials
-- Evaluate permissions
-- Implement authorization logic
-
-The existence of this package explicitly documents that WebAPI has a durable concept of a session.
-
----
-
-### `security.user` — User Domain
-
-**Purpose**  
-Define what a WebAPI user is and how user security data is resolved.
-
-**Responsibilities**
-- User, role, and relationship entities
-- User repositories
-- User services
-- Resolution of effective permissions
-- Definition of the anonymous user as a first-class user
-
-**Depends on**
-- `security.permission`
-
-**Must not**
-- Depend on Spring Security
-- Make authorization decisions
-- Parse credentials or tokens
-
-This package is the **center of gravity** for user-based security data.
-
----
-
-### `security.permission` — Permission Semantics
-
-**Purpose**  
-Define what permissions *mean* in WebAPI.
-
-**Responsibilities**
-- Permission representation
-- Wildcard parsing
-- Permission implication logic
-- Permission comparison utilities
-
-**Depends on**
-- Nothing within `security`
-
-**Must not**
-- Know which users have permissions
-- Make authorization decisions
-- Access persistence layers
-
-This package should contain pure, framework-agnostic logic.
-
----
-
-### `security.authz` — Authorization
-
-**Purpose**  
-Decide whether an action is allowed.
-
-**Responsibilities**
-- Permission evaluation
-- Ownership checks
-- Context-aware authorization logic
-- Support utilities for `@PreAuthorize` and method security
-
-**Depends on**
-- `security.identity`
-- `security.user`
-- `security.permission`
-- `security.session` (if ownership or scope is session-based)
-
-**Must not**
-- Authenticate users
-- Perform user persistence
-- Contain Spring Security plumbing
-
-This package focuses exclusively on **decision-making**.
-
----
-
-### `security.provisioning` — External User & Role Population
-
-**Purpose**  
-Populate and synchronize WebAPI security data from external systems.
-
-**Responsibilities**
-- LDAP user and group imports
-- Group-to-role mapping logic
-- User pre-creation and synchronization
-
-**Depends on**
-- `security.user`
-- `security.permission`
-
-**Must not**
-- Authenticate users
-- Participate in request-time authorization
-
-This package operates outside the request/authorization path.
-
----
-
-### `security.spring` — Spring Security Integration
-
-**Purpose**  
-Adapt WebAPI security concepts to Spring Security.
-
-**Responsibilities**
-- Spring `AuthenticationConverter` implementations
-- `GrantedAuthority` adapters
-- Spring-specific authorization evaluators
-- SecurityFilterChain wiring helpers
-
-**Depends on**
-- `security.authc`
-- `security.authz`
-- `security.identity`
-
-**Must not**
-- Contain business rules
-- Define permission semantics
-- Define user domain logic
-
-This package exists *because* Spring Security exists; no other package should depend on it.
-
----
-
-## 3. Dependency Rules
-
-The following dependency rules define the **allowed direction of coupling** between security packages.
-
-### Core Dependency Flow
-
-```
-permission  ←  user  ←  identity  ←  authc
-      ↑           ↑        ↑          ↑
-      └──── authz ┘        └── session ┘
+**Good:**
+```java
+@PreAuthorize("isOwner(#id, COHORT_DEFINITION) or isPermitted('read:cohort')")
 ```
 
+**Avoid:**
+```java
+@PreAuthorize("canRead(#id)")  // What does "canRead" check? Must trace through code.
+```
+
+#### 2. Separation of Concerns
+- Domain entities (e.g., `CohortDefinition`) contain **no** authorization logic
+- Entity access checking is isolated in `security.authz` package
+- JPA repositories for `{entity}_sec` tables are separate from domain repositories
+
+#### 3. Type Safety
+- Use enums (`EntityType`, `AccessType`) in Java code
+- Expose as constants in SpEL for clean syntax
+- Avoid magic strings in authorization checks
+
+#### 4. Performance Considerations
+- Order checks from fastest to slowest (owner check → cached permission → DB query)
+- `AuthorizationService` designed for future caching layer
+- Entity access queries are optimized with `EXISTS` checks
+
+#### 5. Scalability
+- Avoid wildcard permissions for entity-level access (e.g., `cohort:read:123`)
+- Use `{entity}_sec` tables to prevent permission explosion at scale (20k+ entities)
+- Entity deletion automatically cascades to `{entity}_sec` rows via foreign key constraints
+
+### Package Structure
+
+```
+security/authz/
+  ├── AuthorizationService.java          # Coordination layer for authorization checks
+  ├── AccessType.java                    # Enum: READ, WRITE, MANAGE
+  ├── EntityType.java                    # Enum: COHORT_DEFINITION, CONCEPT_SET, ...
+  ├── EntityAccessService.java           # Routes entity access checks to repositories
+  ├── CohortDefinitionAccessEntity.java  # JPA entity for cohort_definition_sec table
+  ├── CohortDefinitionAccessRepository.java  # Repository with @Query methods
+  ├── WildcardPermission.java            # Shiro-style wildcard permission matching
+  └── WildcardPermissionEvaluator.java   # Evaluates wildcard permissions
+
+security/spring/
+  ├── SpringSecurityConfig.java               # Spring SpEL extension beans
+  ├── WebApiSecurityExpressionRoot.java       # Custom SpEL expressions + constants
+  └── WebApiMethodSecurityExpressionHandler.java  # Creates expression root
+```
+
+## SpEL Constants and Methods
+
+### Constants Available in @PreAuthorize
+
+**Access Types:**
+- `READ` - Read-only access
+- `WRITE` - Modify and delete access
+
+**Entity Types:**
+- `COHORT_DEFINITION` - Cohort definitions
+- `CONCEPT_SET` - Concept sets (future)
+
+### Methods Available in @PreAuthorize
+
+#### `isOwner(Long entityId, EntityType entityType)`
+Checks if the current user is the creator of the entity (via `created_by_id` column). This is typically the fastest check and should be ordered first in combined expressions.
+
+#### `hasEntityAccess(Long entityId, EntityType entityType, AccessType accessType)`
+Checks if the user has specific access granted via the `{entity}_sec` table. This performs a database query and should be ordered last in combined expressions.
+
+#### `isPermitted(String permission)`
+Checks if the user has a global wildcard permission. Results are typically cached, making this faster than entity-specific checks but slower than ownership checks.
+
+### Permission Hierarchy
+
+**WRITE implies READ:**
+Users granted WRITE access to an entity automatically have READ access. It would be impractical to grant update or delete permissions without allowing the user to view current state.
+
+This hierarchy is enforced at the `@PreAuthorize` level by explicit checks rather than automatic implication, keeping security rules visible and traceable.
+
+### Complete Usage Examples
+
+The following examples demonstrate proper security decoration for common CRUD operations:
+
+#### Create Operation
+Only users with global cohort write entitlement can create new cohorts:
+
+```java
+@PreAuthorize("isAuthenticated() and isPermitted('write:cohort')")
+@PostMapping("/cohort")
+public CohortDefinition createCohort(@RequestBody CohortDefinition cohort) {
+    // Set created_by_id to current user
+    // ... implementation
+}
+```
+
+#### Read Operation
+Users can read if they are the owner, have global read entitlement, or have been granted READ access:
+
+```java
+@PreAuthorize("isOwner(#id, COHORT_DEFINITION) or " +              // 1. Check ownership (fast)
+              "isPermitted('read:cohort') or " +                   // 2. Check global permission (cached)
+              "hasEntityAccess(#id, COHORT_DEFINITION, READ)")     // 3. Check entity-specific (DB query)
+@GetMapping("/cohort/{id}")
+public CohortDefinition getCohort(@PathVariable Long id) { ... }
+```
+
+#### Update Operation
+Users can update if they are the owner, have global write entitlement, or have been granted WRITE access. Note that WRITE access implicitly allows reading current state:
+
+```java
+@PreAuthorize("isOwner(#id, COHORT_DEFINITION) or " +
+              "isPermitted('write:cohort') or " + 
+              "hasEntityAccess(#id, COHORT_DEFINITION, WRITE)")
+@PutMapping("/cohort/{id}")
+public CohortDefinition updateCohort(@PathVariable Long id, @RequestBody CohortDefinition cohort) {
+    // ... implementation
+}
+```
+
+#### Delete Operation
+Users can delete if they are the owner, have global write entitlement, or have been granted WRITE access:
+
+```java
+@PreAuthorize("isOwner(#id, COHORT_DEFINITION) or " +
+              "isPermitted('write:cohort') or " + 
+              "hasEntityAccess(#id, COHORT_DEFINITION, WRITE)")
+@DeleteMapping("/cohort/{id}")
+public void deleteCohort(@PathVariable Long id) {
+    cohortRepo.deleteById(id);
+}
+```
+
+**Ordering rationale:**
+1. **Ownership check** → Fastest (simple principal.getUserId() comparison)
+2. **Global permission** → Medium (cached permission set lookup)
+3. **Entity-specific access** → Slowest (database query)
+
+## Database Schema
+
+### Global Permissions Tables
+
+- `sec_user` - Users
+- `sec_role` - Roles (including personal roles)
+- `sec_permission` - Wildcard permissions
+- `sec_role_permission` - Role → Permission assignments
+- `sec_user_role` - User → Role assignments
+
+### Entity-Level Access Tables
+
+Each managed entity has a corresponding `{entity}_sec` table:
+
+```sql
+CREATE TABLE cohort_definition_sec(
+    user_id int,
+    cohort_definition_id int,
+    access_type varchar(50) NOT NULL,  -- 'READ' or 'WRITE'
+    CONSTRAINT PK_cohort_definition_sec PRIMARY KEY (user_id, cohort_definition_id, access_type),
+    CONSTRAINT FK_cohort_definition_id FOREIGN KEY (cohort_definition_id) REFERENCES cohort_definition(id),
+    CONSTRAINT FK_sec_user_id FOREIGN KEY (user_id) REFERENCES sec_user(id)
+);
+```
+
+
+### Adding New Managed Entities
+
+To add a new entity type (e.g., `concept_set`):
+
+1. **Add to `EntityType` enum:**
+   ```java
+   public enum EntityType {
+       COHORT_DEFINITION,
+       CONCEPT_SET  // ← Add here
+   }
+   ```
+
+2. **Create JPA entity for `{entity}_sec` table:**
+   ```java
+   @Entity
+   @Table(name = "concept_set_sec")
+   public class ConceptSetAccessEntity { ... }
+   ```
+
+3. **Create repository with queries:**
+   ```java
+   public interface ConceptSetAccessRepository extends JpaRepository<...> {
+       boolean hasAccess(Long userId, Long conceptSetId, AccessType accessType);
+       Long getCreatedById(Long conceptSetId);
+   }
+   ```
+
+4. **Update `EntityAccessService`:**
+   ```java
+   public boolean hasEntityAccess(...) {
+       return switch(entityType) {
+           case COHORT_DEFINITION -> cohortDefAccessRepo.hasAccess(...);
+           case CONCEPT_SET -> conceptSetAccessRepo.hasAccess(...);  // ← Add here
+       };
+   }
+   ```
+
+5. **Add constant to `WebApiSecurityExpressionRoot`:**
+   ```java
+   public final EntityType CONCEPT_SET = EntityType.CONCEPT_SET;
+   ```
+
+6. **Use in controllers:**
+   ```java
+   @PreAuthorize("isOwner(#id, CONCEPT_SET) or isPermitted('write:conceptset')")
+   @PutMapping("/conceptset/{id}")
+   public ConceptSet updateConceptSet(@PathVariable Long id) { ... }
+   ```
+
+## Example Controller Implementation
+
+```java
+@RestController
+@RequestMapping("/api/cohorts")
+public class CohortController {
+    
+    private final CohortDefinitionRepository cohortRepo;
+    
+    // Public list - anyone can see names
+    @GetMapping
+    public List<CohortDefinitionSummary> listCohorts() {
+        return cohortRepo.findAllSummaries();
+    }
+    
+    // Read full definition - owner, global read permission, or granted READ access
+    @PreAuthorize("isOwner(#id, COHORT_DEFINITION) or " +
+                  "isPermitted('read:cohort') or " + 
+                  "hasEntityAccess(#id, COHORT_DEFINITION, READ)")
+    @GetMapping("/{id}")
+    public CohortDefinition getCohort(@PathVariable Long id) {
+        return cohortRepo.findById(id).orElseThrow();
+    }
+    
+    // Update - owner, global write permission, or granted WRITE access
+    @PreAuthorize("isOwner(#id, COHORT_DEFINITION) or " +
+                  "isPermitted('write:cohort') or " + 
+                  "hasEntityAccess(#id, COHORT_DEFINITION, WRITE)")
+    @PutMapping("/{id}")
+    public CohortDefinition updateCohort(@PathVariable Long id, 
+                                         @RequestBody CohortDefinition cohort) {
+        // ... implementation
+    }
+    
+    // Delete - owner, global write permission, or granted WRITE access
+    @PreAuthorize("isOwner(#id, COHORT_DEFINITION) or " +
+                  "isPermitted('write:cohort') or " + 
+                  "hasEntityAccess(#id, COHORT_DEFINITION, WRITE)")
+    @DeleteMapping("/{id}")
+    public void deleteCohort(@PathVariable Long id) {
+        cohortRepo.deleteById(id);
+    }
+    
+    // Create - any authenticated user with write permission
+    @PreAuthorize("isAuthenticated() and isPermitted('write:cohort')")
+    @PostMapping
+    public CohortDefinition createCohort(@RequestBody CohortDefinition cohort) {
+        // Set created_by_id to current user
+        // ... implementation
+    }
+}
+```
+
+# Authorization use-cases included in this project
+
+A series of users and permissons have been set up by default and the sections below describe the ways to invoke the endpoints via CURL to understand how login occurs and permissons enforced.
+
+## Test Users and Permissions
+
+The following test users are pre-populated in `/src/main/resources/stub/`:
+
+### User: `anonymous` (unauthenticated)
+**Global Permissions:**
+- `read` - Can read all public content
+
+**Entity Access:** None
+
+**Use Case:** Public read-only access
+
 ---
 
-### Allowed Dependencies
+### User: `alice`
+**Credentials:** `alice` / `password1` (DB authentication)
 
-- `permission` depends on nothing
-- `user` may depend on `permission`
-- `identity` may depend on `user`
-- `session` may depend on `identity` and `user`
-- `authz` may depend on `identity`, `user`, `permission`, and `session`
-- `authc` may depend on `identity` and `session`
-- `spring` may depend on all other security packages
-- `provisioning` may depend on `user` and `permission`
+**Global Permissions:**
+- `read` (via "Public Users" role)
 
----
+**Entity Access:** None (yet - can be granted via `cohort_definition_sec`)
 
-### Forbidden Dependencies
-
-- `user` → `authz`
-- `user` → `authc`
-- `permission` → any other package
-- `authz` → `authc`
-- Any package → `spring` (except `spring` itself)
-
-These rules ensure that:
-- Authorization remains pure decision logic
-- Authentication does not leak into user or permission modeling
-- Framework-specific code is isolated
-- Core security concepts remain reusable and testable
+**Use Case:** Basic authenticated user with read-only access
 
 ---
 
-## 4. Usage Guidance
+### User: `bob`
+**Credentials:** `bob` / `password1` (DB authentication)
 
-This structure is intended to be created **up front**, even if some packages initially remain empty.
+**Global Permissions:**
+- `read` (via "Public Users" role)
 
-During migration from Shiro to Spring Security:
-1. Classify existing classes by *capability*
-2. Place them into the appropriate package
-3. Refactor behavior only after classification is complete
+**Entity Access:**
+- **Owns:** Cohort Definition ID 1 ("bob cohort")
 
-Following this guide ensures that the WebAPI security system remains understandable, extensible, and internally consistent over time.
+**Use Case:** Content creator - can fully manage their own cohort, read everything else
+
+---
+
+### User: `writeuser`
+**Credentials:** `writeuser` / `password1` (DB authentication)
+
+**Global Permissions:**
+- `read` (via "Public Users" role)
+- `write` (via personal role permission)
+
+**Entity Access:** None needed - global write permission covers everything
+
+**Use Case:** Power user with global write access to all entities
+
+---
+
+## Running Application Use-Cases
+
+Summary of demo users, credentials and expected behaviors:
+
+- **anonymous**  
+  - Credentials: none (unauthenticated)  
+  - Global permissions: `read` (public read access)  
+  - Expected behavior: can list public cohorts and read public content only.
+  - Example:
+  ```bash
+  # List public cohorts (no auth)
+  curl -s http://localhost:8080/api/cohorts -w "\nHTTP_CODE:%{http_code}\n"
+  ```
+
+- **alice**  
+  - Credentials: `alice` / `password1` (DB auth)  
+  - Global permissions: `read`  
+  - Expected behavior: can log in and read cohorts, but cannot update or delete others' cohorts.
+  - Example:
+  ```bash
+  TOKEN=$(curl -s -u alice:password1 http://localhost:8080/user/login/db \
+    | tr -d '\r\n' \
+    | sed -n 's/.*"jwt"[[:space:]]*:[[:space:]]*"\([^"\]*\)".*/\1/p')
+  # After extracting token into $TOKEN, attempt read (expected: 200 Allowed)
+  curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/cohorts/1 -w "\nHTTP_CODE:%{http_code}\n"
+  ```
+
+  ```  
+  # After extracting token into $TOKEN, attempt update (expected: 403 Forbidden)
+curl -i -X PUT \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"updated"}' \
+  http://localhost:8080/api/cohorts/1 \
+  -w "\nHTTP_CODE:%{http_code}\n"
+  ```
+
+- **bob**  
+  - Credentials: `bob` / `password1` (DB auth)  
+  - Global permissions: `read`  
+  - Entity access: Owner of Cohort Definition ID `1` (created_by_id = bob)  
+  - Expected behavior: can read, update and delete cohort `1` as owner.
+  - Example:
+  ```bash
+  # Login and then fetch cohort 1 (expected: 200 with cohort JSON)
+  TOKEN=$(curl -s -u bob:password1 http://localhost:8080/user/login/db \
+    | tr -d '\r\n' \
+    | sed -n 's/.*"jwt"[[:space:]]*:[[:space:]]*"\([^"\]*\)".*/\1/p')
+  curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/cohorts/1 -w "\nHTTP_CODE:%{http_code}\n"
+  ```
+
+- **writeuser**  
+  - Credentials: `writeuser` / `password1` (DB auth)  
+  - Global permissions: `read`, `write` (global write entitlement)  
+  - Expected behavior: can create, update and delete cohorts across the system.
+  - Example:
+  ```bash
+  # Login and create a new cohort (expected: 201 or 200 with created entity)
+  TOKEN=$(curl -s -u writeuser:password1 http://localhost:8080/user/login/db \
+    | tr -d '\r\n' \
+    | sed -n 's/.*"jwt"[[:space:]]*:[[:space:]]*"\([^"\]*\)".*/\1/p')
+  curl -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+       -d '{"name":"new cohort"}' http://localhost:8080/api/cohorts -w "\nHTTP_CODE:%{http_code}\n"
+  ```
+
+Notes:
+- The demo login endpoint for DB auth is `/user/login/db` and accepts HTTP Basic credentials (curl `-u`).
+  - Resource authorization follows the `@PreAuthorize` rules described earlier:
+  - Read: `isOwner(#id, COHORT_DEFINITION) or isPermitted('read:cohort') or isPermitted('write:cohort') or hasEntityAccess(#id, COHORT_DEFINITION, READ) or hasEntityAccess(#id, COHORT_DEFINITION, WRITE)`
+  - Write/Update/Delete: `isOwner(#id, COHORT_DEFINITION) or isPermitted('write:cohort') or hasEntityAccess(#id, COHORT_DEFINITION, WRITE)`
+  - To see non-200 responses from CURL you can add `-w "\nHTTP_CODE:%{http_code}\n"` to the command to see the response.
+
+---
 

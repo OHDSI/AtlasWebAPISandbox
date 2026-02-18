@@ -86,4 +86,21 @@ public class LoginController {
     }
   }
 
+  /**
+   * Logout endpoint — revokes the session referenced by the caller's JWT.
+   */
+  @RestController
+  public static class Logout {
+    private final LoginService loginSvc;
+
+    public Logout(LoginService loginSvc) {
+      this.loginSvc = loginSvc;
+    }
+
+    @PostMapping("/user/logout")
+    public LoginService.Result logout(Authentication authentication) {
+      return loginSvc.logout(authentication);
+    }
+  }
+
 }
