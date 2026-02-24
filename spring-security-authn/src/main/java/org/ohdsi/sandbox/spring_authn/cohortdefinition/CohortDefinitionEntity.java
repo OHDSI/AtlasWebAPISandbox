@@ -50,7 +50,7 @@ import org.ohdsi.sandbox.spring_authn.security.authz.UserEntity;
     @NamedAttributeNode(value = "details", subgraph = "detailsGraph") }, subgraphs = {
         @NamedSubgraph(name = "detailsGraph", type = CohortDefinitionDetails.class, attributeNodes = {
             @NamedAttributeNode(value = "expression") }) })
-public class CohortDefinition implements Serializable {
+public class CohortDefinitionEntity implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
@@ -95,7 +95,7 @@ public class CohortDefinition implements Serializable {
     return name;
   }
 
-  public CohortDefinition setName(String name) {
+  public CohortDefinitionEntity setName(String name) {
     this.name = name;
     return this;
   }
@@ -104,7 +104,7 @@ public class CohortDefinition implements Serializable {
     return description;
   }
 
-  public CohortDefinition setDescription(String description) {
+  public CohortDefinitionEntity setDescription(String description) {
     this.description = description;
     return this;
   }
@@ -113,7 +113,7 @@ public class CohortDefinition implements Serializable {
     return expressionType;
   }
 
-  public CohortDefinition setExpressionType(ExpressionType expressionType) {
+  public CohortDefinitionEntity setExpressionType(ExpressionType expressionType) {
     this.expressionType = expressionType;
     return this;
   }
@@ -162,7 +162,7 @@ public class CohortDefinition implements Serializable {
     return this.details;
   }
 
-  public CohortDefinition setDetails(CohortDefinitionDetails details) {
+  public CohortDefinitionEntity setDetails(CohortDefinitionDetails details) {
     this.details = details;
     return this;
   }
@@ -172,9 +172,9 @@ public class CohortDefinition implements Serializable {
 
     if (this == o)
       return true;
-    if (!(o instanceof CohortDefinition))
+    if (!(o instanceof CohortDefinitionEntity))
       return false;
-    final CohortDefinition that = (CohortDefinition) o;
+    final CohortDefinitionEntity that = (CohortDefinitionEntity) o;
     return Objects.equals(getId(), that.getId());
   }
 

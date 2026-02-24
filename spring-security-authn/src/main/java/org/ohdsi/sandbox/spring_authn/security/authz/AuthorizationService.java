@@ -28,8 +28,6 @@ public class AuthorizationService {
   private final JdbcTemplate jdbcTemplate;
   private final String ohdsiSchema;
   private final EntityAccessService entityAccessService;
-    private ThreadLocal<ConcurrentHashMap<String, Set<String>>> authorizationInfoCache = ThreadLocal
-      .withInitial(ConcurrentHashMap::new);
 
   public AuthorizationService(UserService userService,
       RoleService roleService,
@@ -165,16 +163,7 @@ public class AuthorizationService {
    * @return A List of String representing permissions.
    */
   public Set<String> getAuthorizationInfo(WebApiPrincipal principal) {
-    return authorizationInfoCache.get().computeIfAbsent(principal.getName(), newLogin -> {
-      return queryUserPermissions(principal);
-    });
-  }
-
-  /**
-   * Clears the permission cache
-   */
-  public void clearAuthorizationInfoCache() {
-    authorizationInfoCache.set(new ConcurrentHashMap<>());
+    return queryUserPermissions(principal);
   }
 
   public Set<String> queryUserPermissions(WebApiPrincipal principal) {
@@ -250,7 +239,7 @@ public class AuthorizationService {
   /**
    * Get the current principal from the security context
    */
-  private WebApiPrincipal getCurrentPrincipal() {
+  public WebApiPrincipal getCurrentPrincipal() {
     var authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication != null && authentication.getPrincipal() instanceof WebApiPrincipal principal) {
       return principal;

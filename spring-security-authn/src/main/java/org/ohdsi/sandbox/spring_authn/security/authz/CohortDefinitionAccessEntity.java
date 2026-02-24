@@ -19,8 +19,8 @@ import java.util.Objects;
 public class CohortDefinitionAccessEntity {
 
     @Id
-    @Column(name = "user_id")
-    private Long userId;
+    @Column(name = "role_id")
+    private Long roleId;
 
     @Id
     @Column(name = "cohort_definition_id")
@@ -31,12 +31,12 @@ public class CohortDefinitionAccessEntity {
     @Enumerated(EnumType.STRING)
     private AccessType accessType;
 
-    public Long getUserId() {
-        return userId;
+    public Long getRoleId() {
+        return roleId;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setRoleId(Long roleId) {
+        this.roleId = roleId;
     }
 
     public Long getCohortDefinitionId() {
@@ -59,15 +59,15 @@ public class CohortDefinitionAccessEntity {
      * Composite key class for CohortDefinitionAccessEntity
      */
     public static class CohortDefinitionAccessId implements Serializable {
-        private Long userId;
+        private Long roleId;
         private Long cohortDefinitionId;
         private AccessType accessType;
 
         public CohortDefinitionAccessId() {
         }
 
-        public CohortDefinitionAccessId(Long userId, Long cohortDefinitionId, AccessType accessType) {
-            this.userId = userId;
+        public CohortDefinitionAccessId(Long roleId, Long cohortDefinitionId, AccessType accessType) {
+            this.roleId = roleId;
             this.cohortDefinitionId = cohortDefinitionId;
             this.accessType = accessType;
         }
@@ -77,14 +77,14 @@ public class CohortDefinitionAccessEntity {
             if (this == o) return true;
             if (!(o instanceof CohortDefinitionAccessId)) return false;
             CohortDefinitionAccessId that = (CohortDefinitionAccessId) o;
-            return Objects.equals(userId, that.userId) &&
+            return Objects.equals(roleId, that.roleId) &&
                    Objects.equals(cohortDefinitionId, that.cohortDefinitionId) &&
                    accessType == that.accessType;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(userId, cohortDefinitionId, accessType);
+            return Objects.hash(roleId, cohortDefinitionId, accessType);
         }
     }
 }

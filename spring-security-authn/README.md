@@ -931,6 +931,7 @@ The embedded authentication stub seeds a few example users for testing. Use thes
 |---|---|---|
 | alice | password1 | no default permissions — useful for testing user registration |
 | bob | password2 | owns a cohort (has entity-level access) |
+| joe | password2 | granted write-access to bob's cohort |
 | writeuser | password1 | global write permission (used for testing write-level access) |
 
 
@@ -1280,7 +1281,7 @@ WebAPI uses a **two-tier permission system**:
    - Used for broad entitlements (e.g., "admin can write everything")
 
 2. **Entity-Level Access** - Stored in `{entity}_sec` tables (e.g., `cohort_definition_sec`)
-   - Tracks specific user access per entity (READ, WRITE)
+   - Tracks specific user access per entity (READ, WRITE) via ROLE
    - Used for granular permissions on user-created content
    - Prevents permission explosion (20k+ cohort definitions, 30k+ concept sets)
 
@@ -1458,12 +1459,12 @@ Each managed entity has a corresponding `{entity}_sec` table:
 
 ```sql
 CREATE TABLE cohort_definition_sec(
-    user_id int,
+    role_id int,
     cohort_definition_id int,
     access_type varchar(50) NOT NULL,  -- 'READ' or 'WRITE'
-    CONSTRAINT PK_cohort_definition_sec PRIMARY KEY (user_id, cohort_definition_id, access_type),
+    CONSTRAINT PK_cohort_definition_sec PRIMARY KEY (role_id, cohort_definition_id, access_type),
     CONSTRAINT FK_cohort_definition_id FOREIGN KEY (cohort_definition_id) REFERENCES cohort_definition(id),
-    CONSTRAINT FK_sec_user_id FOREIGN KEY (user_id) REFERENCES sec_user(id)
+    CONSTRAINT FK_sec_role_id FOREIGN KEY (role_id) REFERENCES sec_role(id)
 );
 ```
 
@@ -1528,8 +1529,18 @@ public class CohortController {
     
     // Public list - anyone can see names
     @GetMapping
-    public List<CohortDefinitionSummary> listCohorts() {
-        return cohortRepo.findAllSummaries();
+    public List<CohortDefinitionListProjection> listCohorts() {
+      List<CohortDefinitionWithAccess> cohorts = cohortRepository.findAllWithAccessHints(authorizationService.getCurrentPrincipal().getUserId());
+      return cohorts.stream()
+        .map(c -> {
+          var def = c.getCohortDefinition();
+          return new CohortDefinitionListProjection(
+              def.getId(),
+              def.getName(),
+              c.getCanRead(),
+              c.getCanWrite());
+        })
+        .collect(Collectors.toList());
     }
     
     // Read full definition - owner, global read permission, or granted READ access
@@ -1675,6 +1686,28 @@ curl -i -X PUT \
     | tr -d '\r\n' \
     | sed -n 's/.*"jwt"[[:space:]]*:[[:space:]]*"\([^"\]*\)".*/\1/p')
   curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/cohorts/1 -w "\nHTTP_CODE:%{http_code}\n"
+  ```
+
+- **joe**  
+  - Credentials: `joe` / `password1` (DB auth)  
+  - Global permissions: `none`  
+  - Entity access: Write-Access to Cohort Definition ID `1` (created_by_id = bob)  
+  - Expected behavior: can read, update and delete cohort `1` as WRITE access.
+  - Example 1:  Access with Write Access
+  ```bash
+  # Login and then fetch cohort 1 (expected: 200 with cohort JSON)
+  TOKEN=$(curl -s -u joe:password1 http://localhost:8080/user/login/db \
+    | tr -d '\r\n' \
+    | sed -n 's/.*"jwt"[[:space:]]*:[[:space:]]*"\([^"\]*\)".*/\1/p')
+  curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/cohorts/1 -w "\nHTTP_CODE:%{http_code}\n"
+  ```
+  - Example 2:  List Cohorts with Read/Write access hints
+  ```bash
+  # Login and then fetch cohort list
+  TOKEN=$(curl -s -u joe:password1 http://localhost:8080/user/login/db \
+    | tr -d '\r\n' \
+    | sed -n 's/.*"jwt"[[:space:]]*:[[:space:]]*"\([^"\]*\)".*/\1/p')
+  curl -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/cohorts -w "\nHTTP_CODE:%{http_code}\n"
   ```
 
 - **writeuser**  

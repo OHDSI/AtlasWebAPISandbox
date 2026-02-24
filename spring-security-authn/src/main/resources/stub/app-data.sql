@@ -64,6 +64,16 @@ values (NEXT VALUE FOR sec_user_role_sequence, CURRVAL('sec_user_sequence'), CUR
 INSERT INTO sec_user_role(id, user_id, role_id)
 values (NEXT VALUE FOR sec_user_role_sequence, CURRVAL('sec_user_sequence') , 1); -- bob -> Public Users
 
+
+insert into sec_user(id, login, name, origin)
+values (NEXT VALUE FOR sec_user_sequence, 'joe', 'joe', 'DATABASE'); -- 'joe' for cohort permission test
+
+INSERT INTO sec_role(id, name, system_role)
+values (NEXT VALUE FOR sec_role_sequence , 'joe', false); -- personal role
+
+INSERT INTO sec_user_role(id, user_id, role_id)
+values (NEXT VALUE FOR sec_user_role_sequence, CURRVAL('sec_user_sequence'), CURRVAL('sec_role_sequence')); -- joe -> personal role
+
 -- Cohort Definitions
 
 INSERT INTO cohort_definition(id, name, created_by_id)
@@ -71,3 +81,6 @@ values (NEXT VALUE FOR cohort_definition_sequence, 'bob cohort', (select id from
 
 INSERT INTO cohort_definition_details (id, expression)
 values (CURRVAL('cohort_definition_sequence'), '{}');
+
+INSERT INTO cohort_definition_sec(role_id, cohort_definition_id, access_type)
+values ((select id from sec_role where name = 'joe'),CURRVAL('cohort_definition_sequence'),'WRITE'); -- joe->write permission

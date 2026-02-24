@@ -136,16 +136,16 @@ CREATE TABLE cohort_definition_details
 );
 
 CREATE TABLE cohort_definition_sec(
-	user_id int,
+	role_id int,
     cohort_definition_id int,
 	access_type varchar(50) NOT NULL,
-	CONSTRAINT PK_cohort_definition_sec PRIMARY KEY (user_id, cohort_definition_id, access_type),
+	CONSTRAINT PK_cohort_definition_sec PRIMARY KEY (role_id, cohort_definition_id, access_type),
 	CONSTRAINT FK_cohort_definition_id
 		FOREIGN KEY (cohort_definition_id)
 		REFERENCES cohort_definition(id),
-	CONSTRAINT FK_sec_user_id
-		FOREIGN KEY (user_id)
-		REFERENCES sec_user(id)        
+	CONSTRAINT FK_sec_role_id
+		FOREIGN KEY (role_id)
+		REFERENCES sec_role(id)        
 );
 
 

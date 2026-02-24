@@ -14,11 +14,15 @@ public interface CohortDefinitionAccessRepository extends JpaRepository<CohortDe
     /**
      * Check if a user has specific access to a cohort definition
      */
-    @Query("SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END " +
-           "FROM CohortDefinitionAccessEntity c " +
-           "WHERE c.userId = :userId " +
-           "AND c.cohortDefinitionId = :cohortDefinitionId " +
-           "AND c.accessType = :accessType")
+    @Query("""
+        SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END
+        FROM CohortDefinitionAccessEntity c
+        JOIN UserRoleEntity ur
+            ON ur.role.id = c.roleId
+        WHERE ur.user.id = :userId
+        AND c.cohortDefinitionId = :cohortDefinitionId
+        AND c.accessType = :accessType
+    """)
     boolean hasAccess(@Param("userId") Long userId, 
                       @Param("cohortDefinitionId") Long cohortDefinitionId,
                       @Param("accessType") AccessType accessType);

@@ -35,7 +35,7 @@ public class CohortDefinitionDetails implements Serializable {
   @MapsId
   @OneToOne(fetch = FetchType.LAZY)
   @JoinColumn(name="id")
-  private CohortDefinition definition;
+  private CohortDefinitionEntity definition;
 
   @Lob
   @JdbcTypeCode(SqlTypes.VARCHAR)
@@ -50,11 +50,11 @@ public class CohortDefinitionDetails implements Serializable {
     return this;
   }
 
-  public CohortDefinition getCohortDefinition() {
+  public CohortDefinitionEntity getCohortDefinition() {
     return this.definition;
   }
 
-  public CohortDefinitionDetails setCohortDefinition(CohortDefinition definition) {
+  public CohortDefinitionDetails setCohortDefinition(CohortDefinitionEntity definition) {
     this.definition = definition;
     return this;
   }
