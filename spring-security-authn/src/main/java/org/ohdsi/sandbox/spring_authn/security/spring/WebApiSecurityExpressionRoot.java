@@ -22,22 +22,15 @@ public class WebApiSecurityExpressionRoot
        Constants for use in @PreAuthorize expressions
        ========================================================== */
 
-    // Provide SpEL-friendly accessor methods (callable as READ, WRITE because of 'get' prefix on method)
-    public AccessType getREAD() {
-        return AccessType.READ;
-    }
+    // Provide SpEL-friendly accessor methods
 
-    public AccessType getWRITE() {
-        return AccessType.WRITE;
-    }
+    // AccessType
+    public final AccessType READ = AccessType.READ;
+    public final AccessType WRITE = AccessType.WRITE;
 
-    public EntityType getCOHORT_DEFINITION() {
-        return EntityType.COHORT_DEFINITION;
-    }
-
-    public EntityType getCONCEPT_SET() {
-        return EntityType.CONCEPT_SET;
-    }
+    // EntityType
+    public final EntityType COHORT_DEFINITION = EntityType.COHORT_DEFINITION;
+    public final EntityType CONCEPT_SET = EntityType.CONCEPT_SET;
 
     public WebApiSecurityExpressionRoot(
             Authentication authentication,

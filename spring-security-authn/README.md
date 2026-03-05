@@ -1280,7 +1280,7 @@ WebAPI uses a **two-tier permission system**:
    - Examples: `*`, `read`, `write`, `read:cohort`, `write:cohort`
    - Used for broad entitlements (e.g., "admin can write everything")
 
-2. **Entity-Level Access** - Stored in `{entity}_sec` tables (e.g., `cohort_definition_sec`)
+2. **Entity-Level Access** - Stored in `sec_{entity}` tables (e.g., `sec_cohort_definition`)
    - Tracks specific user access per entity (READ, WRITE) via ROLE
    - Used for granular permissions on user-created content
    - Prevents permission explosion (20k+ cohort definitions, 30k+ concept sets)
@@ -1458,7 +1458,7 @@ public void deleteCohort(@PathVariable Long id) {
 Each managed entity has a corresponding `{entity}_sec` table:
 
 ```sql
-CREATE TABLE cohort_definition_sec(
+CREATE TABLE sec_cohort_definition(
     role_id int,
     cohort_definition_id int,
     access_type varchar(50) NOT NULL,  -- 'READ' or 'WRITE'
@@ -1481,10 +1481,10 @@ To add a new entity type (e.g., `concept_set`):
    }
    ```
 
-2. **Create JPA entity for `{entity}_sec` table:**
+2. **Create JPA entity for `sec_{entity}` table:**
    ```java
    @Entity
-   @Table(name = "concept_set_sec")
+   @Table(name = "sec_concept_set")
    public class ConceptSetAccessEntity { ... }
    ```
 

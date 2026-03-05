@@ -118,7 +118,7 @@ public class CohortController {
    * Authorization: isAuthenticated AND isPermitted('write:cohort')
    * Note: In real implementation, created_by_id would be set to current user
    */
-  @PreAuthorize("isAuthenticated() and isPermitted('write:cohort')")
+  @PreAuthorize("isAuthenticated() and isPermitted('create:cohort')")
   @PostMapping
   public Map<String, Object> createCohort(@RequestBody Map<String, Object> cohort) {
     String username = authorizationService.getCurrentLogin();
