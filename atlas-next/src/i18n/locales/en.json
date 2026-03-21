@@ -1,0 +1,82 @@
+{
+  "navigation": {
+    "home": "Home",
+    "vocabulary": "Vocabulary",
+    "cohortDefinitions": "Cohort Definitions",
+    "conceptSets": "Concept Sets",
+    "characterizations": "Characterizations",
+    "incidenceRates": "Incidence Rates",
+    "pathways": "Pathways",
+    "estimation": "Estimation",
+    "prediction": "Prediction",
+    "profiles": "Profiles",
+    "jobs": "Jobs",
+    "configuration": "Configuration",
+    "datasources": "Data Sources",
+    "feedback": "Feedback",
+    "tools": "Tools",
+    "reusables": "Reusables",
+    "tagging": "Tagging"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "close": "Close",
+    "loading": "Loading...",
+    "noData": "No data available",
+    "confirm": "Confirm",
+    "search": "Search",
+    "reset": "Reset",
+    "retry": "Retry"
+  },
+  "errors": {
+    "browserWarning": "Note that only Chrome browser is fully supported.",
+    "unauthorized": "You are not authorized to access this resource.",
+    "forbidden": "Access denied. You do not have permission to perform this action.",
+    "notFound": "The requested resource was not found.",
+    "serverError": "A server error occurred. Please try again later.",
+    "connectionFailed": "Unable to connect to the server. Please contact your administrator.",
+    "noSources": "No data sources are configured. Please visit the Configuration page to set up a data source.",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "oauthEmptyEmail": "OAuth error: The email address returned by the authentication provider is empty."
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "accessDenied": "Access Denied"
+  },
+  "dataSources": {
+    "reports": {
+      "dashboard": "Dashboard",
+      "dataDensity": "Data Density",
+      "person": "Person",
+      "visit": "Visit",
+      "conditionOccurrence": "Condition Occurrence",
+      "conditionEra": "Condition Era",
+      "procedure": "Procedure",
+      "drugExposure": "Drug Exposure",
+      "drugEra": "Drug Era",
+      "measurement": "Measurement",
+      "observation": "Observation",
+      "observationPeriod": "Observation Period",
+      "death": "Death"
+    }
+  },
+  "components": {
+    "conceptSet": {
+      "expressionResolveError": "Error occurred during resolving expression!",
+      "forbiddenError": "You are not authorized to view the concept set expression."
+    }
+  },
+  "tool": {
+    "error": {
+      "list": "Get list tool error, try later!",
+      "update": "Update tool error, try later!",
+      "create": "Create tool error, try later!",
+      "delete": "Delete tool error, try later!"
+    }
+  }
+}
