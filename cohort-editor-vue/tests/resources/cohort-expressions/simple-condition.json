@@ -1,0 +1,27 @@
+{
+  "Title": "Simple Condition Cohort",
+  "PrimaryCriteria": {
+    "CriteriaList": [
+      {
+        "ConditionOccurrence": {
+          "CodesetId": 1,
+          "First": true,
+          "OccurrenceStartDate": {
+            "Op": "gte",
+            "Value": "2020-01-01"
+          }
+        }
+      }
+    ]
+  },
+  "ConceptSets": [],
+  "QualifiedLimit": {
+    "Type": "First"
+  },
+  "ExpressionLimit": {
+    "Type": "All"
+  },
+  "InclusionRules": [],
+  "CensoringCriteria": [],
+  "cdmVersionRange": ">=5.3"
+}

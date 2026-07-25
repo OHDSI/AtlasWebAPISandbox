@@ -1,0 +1,18 @@
+{
+  "Title": "Invalid Cohort - Bad Type",
+  "PrimaryCriteria": {
+    "CriteriaList": [
+      {
+        "ConditionOccurrence": {
+          "CodesetId": "not-a-number",
+          "First": "not-a-boolean",
+          "InvalidField": "this field doesn't exist in the schema"
+        }
+      }
+    ]
+  },
+  "AdditionalCriteria": {
+    "Type": "INVALID_TYPE",
+    "CriteriaList": []
+  }
+}

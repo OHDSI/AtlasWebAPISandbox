@@ -1,0 +1,64 @@
+{
+  "Title": "Drug Exposure with Demographics",
+  "PrimaryCriteria": {
+    "CriteriaList": [
+      {
+        "DrugExposure": {
+          "CodesetId": 5,
+          "First": true,
+          "OccurrenceStartDate": {
+            "Op": "gte",
+            "Value": "2019-01-01"
+          },
+          "DrugType": [
+            {
+              "CONCEPT_ID": 40033261,
+              "CONCEPT_NAME": "Metformin",
+              "STANDARD_CONCEPT": "S",
+              "VOCABULARY_ID": "RxNorm",
+              "DOMAIN_ID": "Drug"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "AdditionalCriteria": {
+    "Type": "ALL",
+    "CriteriaList": [],
+    "DemographicCriteriaList": [
+      {
+        "Age": {
+          "Op": "gte",
+          "Value": 18
+        },
+        "Gender": [
+          {
+            "CONCEPT_ID": 8532,
+            "CONCEPT_NAME": "Female",
+            "VOCABULARY_ID": "SNOMED",
+            "DOMAIN_ID": "Gender"
+          }
+        ]
+      }
+    ]
+  },
+  "ConceptSets": [
+    {
+      "id": 5,
+      "name": "Diabetes Medications",
+      "expression": {
+        "items": []
+      }
+    }
+  ],
+  "QualifiedLimit": {
+    "Type": "First"
+  },
+  "ExpressionLimit": {
+    "Type": "All"
+  },
+  "InclusionRules": [],
+  "CensoringCriteria": [],
+  "cdmVersionRange": ">=5.4"
+}

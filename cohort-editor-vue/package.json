@@ -1,0 +1,44 @@
+{
+  "name": "cohort-editor-vue",
+  "version": "1.0.0",
+  "description": "Simplified Vue.js cohort editor demonstrating reactive JSON document manipulation",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -p tsconfig.app.json --noEmit && vite build",
+    "preview": "vite preview",
+    "type-check": "vue-tsc --noEmit -p tsconfig.app.json",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
+    "format": "prettier --write src/",
+    "test:unit": "vitest",
+    "test:unit:run": "vitest run"
+  },
+  "dependencies": {
+    "@mdi/font": "^7.4.47",
+    "@vueuse/core": "^14.0.0",
+    "date-fns": "^3.0.0",
+    "pinia": "^2.1.0",
+    "sass": "^1.93.3",
+    "uuid": "^13.0.0",
+    "vue": "^3.5.26",
+    "vue-router": "^4.2.0",
+    "vuetify": "^3.5.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "@typescript-eslint/eslint-plugin": "^8.10.0",
+    "@typescript-eslint/parser": "^8.10.0",
+    "@vitejs/plugin-vue": "^5.0.5",
+    "@vue/test-utils": "^2.4.6",
+    "eslint": "^9.15.0",
+    "eslint-plugin-vue": "^9.31.0",
+    "jsdom": "^25.0.1",
+    "prettier": "^3.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.0",
+    "vite-plugin-vuetify": "^2.1.2",
+    "vitest": "^3.0.4",
+    "vue-tsc": "^2.2.0"
+  }
+}

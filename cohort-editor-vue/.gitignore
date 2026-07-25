@@ -1,0 +1,18 @@
+# Git configuration
+node_modules/
+dist/
+*.local
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln.iml
+
+# Build outputs
+coverage/
+.nyc_output/

@@ -1,0 +1,48 @@
+/* Atlas3-inspired cross-cutting Vuetify component overrides */
+
+.v-overlay__scrim,
+.v-navigation-drawer__scrim {
+  backdrop-filter: blur(4px);
+  background-color: rgba(31, 66, 90, 0.45);
+  opacity: 1;
+}
+
+.page-tabs-rail {
+  background: rgb(var(--v-theme-surface));
+  border-bottom: 1px solid rgb(var(--v-theme-outline-variant));
+  padding: 0 24px;
+  margin: 0 0 16px;
+}
+
+.page-tabs .v-tab {
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding-inline: 16px;
+  min-height: 52px;
+}
+
+.page-tabs .v-tab .v-icon {
+  margin-inline-end: 8px;
+  opacity: 0.85;
+}
+
+.v-btn-toggle {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.v-btn-toggle > .v-btn {
+  border-radius: 0 !important;
+}
+
+.v-btn-toggle > .v-btn:first-child {
+  border-top-left-radius: 8px !important;
+  border-bottom-left-radius: 8px !important;
+}
+
+.v-btn-toggle > .v-btn:last-child {
+  border-top-right-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+}
