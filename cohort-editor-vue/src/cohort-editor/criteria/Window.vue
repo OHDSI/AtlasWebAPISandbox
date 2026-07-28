@@ -6,7 +6,7 @@
           {{ eventAnchorLabel }}
         </v-chip>
 
-        <span class="window-editor__connector">between</span>
+        <span class="window-editor__connector">{{ betweenLabel }}</span>
 
         <v-menu v-model="startDaysMenu" :close-on-content-click="false" location="bottom" offset="8" width="260">
           <template #activator="{ props: menuProps }">
@@ -33,7 +33,7 @@
             <v-card-text class="pa-3">
               <v-text-field
                 v-model="startDaysValue"
-                label="Days"
+                :label="daysLabel"
                 type="number"
                 min="0"
                 variant="outlined"
@@ -51,7 +51,7 @@
           {{ startDirectionLabel }}
         </v-chip>
 
-        <span class="window-editor__connector">and</span>
+        <span class="window-editor__connector">{{ andLabel }}</span>
 
         <v-menu v-model="endDaysMenu" :close-on-content-click="false" location="bottom" offset="8" width="260">
           <template #activator="{ props: menuProps }">
@@ -78,7 +78,7 @@
             <v-card-text class="pa-3">
               <v-text-field
                 v-model="endDaysValue"
-                label="Days"
+                :label="daysLabel"
                 type="number"
                 min="0"
                 variant="outlined"
@@ -108,23 +108,29 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import type { Window } from '../circe.types'
 
-defineOptions({ name: 'WindowEditor' })
+defineOptions({ name: 'Window' })
 
 const props = defineProps<{
   window: Window
 }>()
 
+const { t } = useI18n()
+
 const startDaysMenu = ref(false)
 const endDaysMenu = ref(false)
 
-const eventAnchorLabel = computed(() => (props.window.UseEventEnd ? 'Event ends' : 'Event starts'))
-const indexAnchorLabel = computed(() => (props.window.UseIndexEnd ? 'Index ends' : 'Index starts'))
-const startDirectionLabel = computed(() => (windowDirection('Start') === -1 ? 'Before' : 'After'))
-const endDirectionLabel = computed(() => (windowDirection('End') === -1 ? 'Before' : 'After'))
+const eventAnchorLabel = computed(() => (props.window.UseEventEnd ? t('common.eventEnds', 'Event ends').value : t('common.eventStarts', 'Event starts').value))
+const indexAnchorLabel = computed(() => (props.window.UseIndexEnd ? t('common.indexEnds', 'Index ends').value : t('common.indexStarts', 'Index starts').value))
+const startDirectionLabel = computed(() => (windowDirection('Start') === -1 ? t('options.before', 'Before').value : t('options.after', 'After').value))
+const endDirectionLabel = computed(() => (windowDirection('End') === -1 ? t('options.before', 'Before').value : t('options.after', 'After').value))
 const startDaysLabel = computed(() => daysChipLabel('Start'))
 const endDaysLabel = computed(() => daysChipLabel('End'))
+const daysLabel = computed(() => t('common.days', 'Days').value)
+const betweenLabel = computed(() => t('common.between', 'between').value)
+const andLabel = computed(() => t('common.and', 'and').value)
 const hasStartDays = computed(() => props.window.Start?.Days !== null && props.window.Start?.Days !== undefined)
 const hasEndDays = computed(() => props.window.End?.Days !== null && props.window.End?.Days !== undefined)
 const startDaysValue = computed<string>({
@@ -200,10 +206,10 @@ function daysChipLabel(side: 'Start' | 'End') {
   const endpoint = props.window[side]
   const days = endpoint?.Days
   if (days === null || days === undefined) {
-    return 'all days'
+    return t('common.allDays', 'all days').value
   }
 
-  return `${days} day${days === 1 ? '' : 's'}`
+  return `${days} ${days === 1 ? t('common.day', 'day').value : t('common.days', 'days').value}`
 }
 
 function ensureEndpoint(side: 'Start' | 'End') {

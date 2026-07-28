@@ -34,7 +34,7 @@
                   variant="outlined"
                   color="warning"
                 >
-                  Unused
+                    Unused
                 </v-chip>
               </td>
             </tr>

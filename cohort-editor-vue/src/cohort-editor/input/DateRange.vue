@@ -21,7 +21,7 @@
       @update:model-value="(value) => setValue(value)"
     />
     <template v-if="activeValue?.Op === 'bt' || activeValue?.Op === '!bt'">
-      <span class="date-range__and text-medium-emphasis">and</span>
+      <span class="date-range__and text-medium-emphasis">{{ andLabel }}</span>
       <v-text-field
         class="date-range__extent"
         :model-value="activeValue?.Extent"
@@ -37,22 +37,27 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import type { DateRange, DateRangeOp } from '../circe.types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue?: DateRange
 }>()
 
-const operators = [
-  { title: 'before', value: 'lt' },
-  { title: 'on or before', value: 'lte' },
-  { title: 'on', value: 'eq' },
-  { title: 'not on', value: '!eq' },
-  { title: 'after', value: 'gt' },
-  { title: 'on or after', value: 'gte' },
-  { title: 'between', value: 'bt' },
-  { title: 'not between', value: '!bt' },
-]
+const operators = computed(() => [
+  { title: t('options.before', 'before').value, value: 'lt' },
+  { title: t('options.onOrBefore', 'on or before').value, value: 'lte' },
+  { title: t('options.on', 'on').value, value: 'eq' },
+  { title: t('options.notOn', 'not on').value, value: '!eq' },
+  { title: t('options.after', 'after').value, value: 'gt' },
+  { title: t('options.onOrAfter', 'on or after').value, value: 'gte' },
+  { title: t('options.between', 'between').value, value: 'bt' },
+  { title: t('options.notBetween', 'not between').value, value: '!bt' },
+])
+
+const andLabel = computed(() => t('common.and', 'and').value)
 
 const activeValue = computed(() => props.modelValue)
 

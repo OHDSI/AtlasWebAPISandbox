@@ -26,7 +26,22 @@
         :class="{ 'attribute-container--label-only': !row.kind }"
       >
         <div class="attribute-title">
-          {{ row.label }}
+          <span>{{ row.label }}</span>
+          <v-tooltip
+            v-if="row.description"
+            location="top"
+            max-width="320"
+          >
+            <template #activator="{ props: tooltipProps }">
+              <v-icon
+                v-bind="tooltipProps"
+                icon="mdi-help-circle-outline"
+                size="14"
+                class="attribute-title__help"
+              />
+            </template>
+            <span>{{ row.description }}</span>
+          </v-tooltip>
         </div>
 
         <div
@@ -60,7 +75,8 @@ import DateAdjustment from '../input/DateAdjustment.vue'
 import DateRange from '../input/DateRange.vue'
 import NumericRange from '../input/NumericRange.vue'
 import ConceptSetSelection from '../input/ConceptSetSelection.vue'
-import CriteriaGroupEditor from './CriteriaGroupEditor.vue'
+import CriteriaGroup from './CriteriaGroup.vue'
+import PeriodEditor from '../input/Period.vue'
 import TextFilter from '../input/TextFilter.vue'
 import type { ConceptSetOption, ConceptSetSelectionTarget } from './criteria-editor.types'
 import type { CriteriaAttributeSpec, CriteriaFieldKind } from './criteria-editor.types'
@@ -83,7 +99,8 @@ const componentsByKind = {
   dateRange: markRaw(DateRange),
   dateAdjustment: markRaw(DateAdjustment),
   textFilter: markRaw(TextFilter),
-  criteriaGroup: markRaw(CriteriaGroupEditor),
+  period: markRaw(PeriodEditor),
+  criteriaGroup: markRaw(CriteriaGroup),
 } satisfies Record<CriteriaFieldKind, unknown>
 
 function componentFor(kind: CriteriaFieldKind) {
@@ -125,6 +142,10 @@ function removeRow(rowKey: string) {
   flex: 1 1 auto;
 }
 
+.attribute-container--label-only .attribute-actions {
+  flex: 0 0 auto;
+}
+
 .attribute-container--label-only .attribute-input {
   display: none;
 }
@@ -132,14 +153,25 @@ function removeRow(rowKey: string) {
 .attribute-title {
   display: flex;
   align-items: center;
+  gap: 4px;
   padding: 8px 12px;
   flex: 1;
-  max-width: 20%;
+  max-width: 28%;
   color: rgb(var(--v-theme-primary));
   background: #ebf2fa;
   font-size: 13px;
   font-weight: 500;
   border-right: 1px solid rgb(var(--v-theme-primary));
+}
+
+.attribute-title__help {
+  color: rgb(var(--v-theme-on-surface-variant));
+  opacity: 0.6;
+  cursor: help;
+}
+
+.attribute-title__help:hover {
+  opacity: 1;
 }
 
 .attribute-input {
@@ -173,8 +205,10 @@ function removeRow(rowKey: string) {
 .attribute-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   background: #ebf2fa;
-  padding: 0 4px;
+  padding: 0 2px;
+  flex: 0 0 34px;
 }
 
 .attribute-actions .v-btn {

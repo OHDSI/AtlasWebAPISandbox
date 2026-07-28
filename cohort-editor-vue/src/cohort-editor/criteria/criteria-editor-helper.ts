@@ -22,6 +22,17 @@ export function createSchemaFieldProps<T extends Record<string, any>>(modelValue
   return { modelValue }
 }
 
+export function createConceptSetModel<T extends Record<string, any>>(target: T, fieldKey: keyof T & string) {
+  return {
+    get CodesetId() {
+      return target[fieldKey] as number | undefined
+    },
+    set CodesetId(value: number | undefined) {
+      ;(target as Record<string, any>)[fieldKey] = value
+    },
+  }
+}
+
 export function createDefaultDateAdjustment(): DateAdjustment {
   return {
     StartWith: 'START_DATE',

@@ -10,7 +10,7 @@
         size="small"
         @click="toggleExclude"
       >
-        {{ binding?.exclude?.value ? 'not any of' : 'any of' }}
+        {{ binding?.exclude?.value ? notAnyOfLabel : anyOfLabel }}
       </v-chip>
 
       <AtlasButton
@@ -20,7 +20,7 @@
         class="concept-array__select-button"
         @click="isSearchDialogOpen = true"
       >
-        Add Concepts
+        {{ addConceptsLabel }}
       </AtlasButton>
     </div>
 
@@ -41,7 +41,7 @@
         v-if="selectedConcepts.length === 0"
         class="text-medium-emphasis text-body-2"
       >
-        No concepts selected
+        {{ noConceptsSelectedLabel }}
       </span>
     </div>
 
@@ -56,9 +56,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { AtlasButton } from '@/components/ui'
+import { useI18n } from '@/composables/useI18n'
 import type { Concept } from '../circe.types'
 import type { ConceptArrayBinding } from '../criteria/criteria-editor.types'
 import VocabularySearchResultsDialog from '../VocabularySearchResultsDialog.vue'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   binding?: ConceptArrayBinding
@@ -70,6 +73,10 @@ const emit = defineEmits<{
 }>()
 
 const isSearchDialogOpen = ref(false)
+const anyOfLabel = computed(() => t('components.conceptAddBox.anyOf', 'any of').value)
+const notAnyOfLabel = computed(() => t('components.conceptAddBox.notAnyOf', 'not any of').value)
+const addConceptsLabel = computed(() => t('components.conceptAddBox.addConcepts', 'Add Concepts').value)
+const noConceptsSelectedLabel = computed(() => t('components.conceptAddBox.noConceptsSelected', 'No concepts selected').value)
 
 const selectedConcepts = computed(() => (props.binding ? props.binding.concepts.value : props.modelValue) || [])
 

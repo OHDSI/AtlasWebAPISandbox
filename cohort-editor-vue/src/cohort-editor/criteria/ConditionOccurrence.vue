@@ -7,14 +7,14 @@
     <v-card-text class="condition-occurrence-editor__header d-flex align-center ga-3 py-3">
       <div class="condition-occurrence-editor__title-block d-flex align-center ga-3 flex-wrap">
         <div class="condition-occurrence-editor__type">
-          Condition occurrence of:
+          {{ occurrenceTitle }}
         </div>
 
         <EventConceptSet
           compact
           :concept-sets="conceptSets"
           :model-value="conditionOccurrenceConceptSetModel"
-          :select-label="'Select concept set'"
+          :select-label="selectConceptSetLabel"
           @select="emit('select-concept-set', $event)"
           @edit="emit('edit-concept-set', $event)"
           @clear="emit('clear-concept-set')"
@@ -37,7 +37,7 @@
             icon="mdi-plus"
             :disabled="!canAddAttribute"
           >
-            Add Attribute
+            {{ addAttributeLabel }}
           </AtlasButton>
         </template>
 
@@ -46,6 +46,7 @@
             v-for="attr in availableAttributes"
             :key="attr.key"
             :title="attr.label"
+            :subtitle="attr.description"
             @click="addAttribute(attr)"
           />
         </v-list>
@@ -63,7 +64,7 @@
     <v-divider />
 
     <v-card-text>
-      <CriteriaAttributesEditor
+      <CriteriaAttributes
         :attributes="activeAttributes"
         :concept-sets="conceptSets"
         @select-concept-set="emit('select-concept-set', $event)"
@@ -76,13 +77,14 @@
 
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import type { Criteria, CriteriaGroup } from '../circe.types'
 import { AtlasButton } from '@/components/ui'
 import EventConceptSet from '../input/EventConceptSet.vue'
 import type { ConceptSetOption, ConceptSetSelectionTarget } from './criteria-editor.types'
-import CriteriaAttributesEditor from './CriteriaAttributesEditor.vue'
+import CriteriaAttributes from './CriteriaAttributes.vue'
 import type { ConceptArrayBinding, CriteriaAttributeSpec } from './criteria-editor.types'
-import type { ConceptSetSelection, DateAdjustment, DateRange, TextFilter } from '../circe.types'
+import type { ConceptSetSelection, DateAdjustment, DateRange, NumericRange, TextFilter } from '../circe.types'
 import { createConceptSetComponentProps, createDefaultDateAdjustment, createSchemaFieldProps, ensureObjectField } from './criteria-editor-helper'
 
 const props = defineProps<{
@@ -97,10 +99,25 @@ const emit = defineEmits<{
   'clear-concept-set': []
 }>()
 
+const { t } = useI18n()
+
+const occurrenceTitle = computed(() =>
+  t('components.conditionOccurrence.conditionOccurrenceText_1', 'a condition occurrence of').value
+)
+
+const addAttributeLabel = computed(() =>
+  t('components.conditionOccurrence.addAttribute', 'Add attribute...').value
+)
+
+const selectConceptSetLabel = computed(() =>
+  t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value
+)
+
 const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   {
     key: 'First',
-    label: 'First in history',
+    label: 'First Diagnosis',
+    description: 'Limit to first diagnosis in history',
     init: () => {
       conditionOccurrenceData.value.First = true
     },
@@ -110,8 +127,149 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
     isActive: () => conditionOccurrenceData.value.First === true,
   },
   {
+    key: 'Age',
+    label: 'Age',
+    description: 'Filter by age at time of event',
+    kind: 'numericRange',
+    componentProps: () => createSchemaFieldProps(
+      ensureObjectField(conditionOccurrenceData.value, 'Age', () => ({ Value: undefined, Op: 'gte', Extent: undefined })) as NumericRange
+    ),
+    init: () => {
+      ensureObjectField(conditionOccurrenceData.value, 'Age', () => ({ Value: undefined, Op: 'gte', Extent: undefined }))
+    },
+    clear: () => {
+      delete conditionOccurrenceData.value.Age
+    },
+    isActive: () => 'Age' in conditionOccurrenceData.value,
+  },
+  {
+    key: 'Gender',
+    label: 'Gender',
+    description: 'Filter by patient gender',
+    kind: 'conceptArray',
+    componentProps: () => ({
+      binding: {
+        concepts: toRef(conditionOccurrenceData.value, 'Gender'),
+      } satisfies ConceptArrayBinding,
+    }),
+    init: () => {
+      conditionOccurrenceData.value.Gender = []
+    },
+    clear: () => {
+      delete conditionOccurrenceData.value.Gender
+    },
+    isActive: () => 'Gender' in conditionOccurrenceData.value,
+  },
+  {
+    key: 'GenderCS',
+    label: 'Gender Concept Set',
+    description: 'Filter gender by a concept set',
+    kind: 'conceptSet',
+    componentProps: () => createConceptSetComponentProps(
+      ensureObjectField(conditionOccurrenceData.value, 'GenderCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
+      props.conceptSets,
+      t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value,
+      target => emit('select-concept-set', target),
+      target => emit('edit-concept-set', target),
+    ),
+    init: () => {
+      ensureObjectField(conditionOccurrenceData.value, 'GenderCS', () => ({ CodesetId: undefined, IsExclusion: false }))
+    },
+    clear: () => {
+      delete conditionOccurrenceData.value.GenderCS
+    },
+    isActive: () => 'GenderCS' in conditionOccurrenceData.value,
+  },
+  {
+    key: 'ConditionStatus',
+    label: 'Condition Status',
+    description: 'Filter by condition status',
+    kind: 'conceptArray',
+    componentProps: () => ({
+      binding: {
+        concepts: toRef(conditionOccurrenceData.value, 'ConditionStatus'),
+      } satisfies ConceptArrayBinding,
+    }),
+    init: () => {
+      conditionOccurrenceData.value.ConditionStatus = []
+    },
+    clear: () => {
+      delete conditionOccurrenceData.value.ConditionStatus
+    },
+    isActive: () => 'ConditionStatus' in conditionOccurrenceData.value,
+  },
+  {
+    key: 'ConditionStatusCS',
+    label: 'Condition Status Concept Set',
+    description: 'Filter condition status by a concept set',
+    kind: 'conceptSet',
+    componentProps: () => createConceptSetComponentProps(
+      ensureObjectField(conditionOccurrenceData.value, 'ConditionStatusCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
+      props.conceptSets,
+      t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value,
+      target => emit('select-concept-set', target),
+      target => emit('edit-concept-set', target),
+    ),
+    init: () => {
+      ensureObjectField(conditionOccurrenceData.value, 'ConditionStatusCS', () => ({ CodesetId: undefined, IsExclusion: false }))
+    },
+    clear: () => {
+      delete conditionOccurrenceData.value.ConditionStatusCS
+    },
+    isActive: () => 'ConditionStatusCS' in conditionOccurrenceData.value,
+  },
+  {
+    key: 'OccurrenceStartDate',
+    label: 'Condition Start Date',
+    description: 'Filter by start date',
+    kind: 'dateRange',
+    componentProps: () => createSchemaFieldProps(
+      ensureObjectField(conditionOccurrenceData.value, 'OccurrenceStartDate', () => ({ Value: '', Op: 'gte', Extent: undefined })) as DateRange
+    ),
+    init: () => {
+      ensureObjectField(conditionOccurrenceData.value, 'OccurrenceStartDate', () => ({ Value: '', Op: 'gte', Extent: undefined }))
+    },
+    clear: () => {
+      delete conditionOccurrenceData.value.OccurrenceStartDate
+    },
+    isActive: () => 'OccurrenceStartDate' in conditionOccurrenceData.value,
+  },
+  {
+    key: 'OccurrenceEndDate',
+    label: 'Condition End Date',
+    description: 'Filter by end date',
+    kind: 'dateRange',
+    componentProps: () => createSchemaFieldProps(
+      ensureObjectField(conditionOccurrenceData.value, 'OccurrenceEndDate', () => ({ Value: '', Op: 'gte', Extent: undefined })) as DateRange
+    ),
+    init: () => {
+      ensureObjectField(conditionOccurrenceData.value, 'OccurrenceEndDate', () => ({ Value: '', Op: 'gte', Extent: undefined }))
+    },
+    clear: () => {
+      delete conditionOccurrenceData.value.OccurrenceEndDate
+    },
+    isActive: () => 'OccurrenceEndDate' in conditionOccurrenceData.value,
+  },
+  {
+    key: 'DateAdjustment',
+    label: 'Date Adjustment',
+    description: 'Adjust event dates',
+    kind: 'dateAdjustment',
+    componentProps: () => createSchemaFieldProps(
+      ensureObjectField(conditionOccurrenceData.value, 'DateAdjustment', createDefaultDateAdjustment) as DateAdjustment
+    ),
+    init: () => {
+      ensureObjectField(conditionOccurrenceData.value, 'DateAdjustment', createDefaultDateAdjustment)
+    },
+    clear: () => {
+      delete conditionOccurrenceData.value.DateAdjustment
+    },
+    isActive: () => 'DateAdjustment' in conditionOccurrenceData.value,
+  },
+  {
     key: 'ConditionType',
-    label: 'Condition type',
+    label: 'Condition Type',
+    description: 'Filter by condition type',
     kind: 'conceptArray',
     componentProps: () => ({
       binding: {
@@ -131,12 +289,13 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'ConditionTypeCS',
-    label: 'Condition type concept set',
+    label: 'Condition Type Concept Set',
+    description: 'Filter condition type by a concept set',
     kind: 'conceptSet',
     componentProps: () => createConceptSetComponentProps(
       ensureObjectField(conditionOccurrenceData.value, 'ConditionTypeCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
       props.conceptSets,
-      'Condition type concept set',
+      t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value,
       target => emit('select-concept-set', target),
       target => emit('edit-concept-set', target),
     ),
@@ -149,144 +308,9 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
     isActive: () => 'ConditionTypeCS' in conditionOccurrenceData.value,
   },
   {
-    key: 'DateAdjustment',
-    label: 'Date adjustment',
-    kind: 'dateAdjustment',
-    componentProps: () => createSchemaFieldProps(
-      ensureObjectField(conditionOccurrenceData.value, 'DateAdjustment', createDefaultDateAdjustment) as DateAdjustment
-    ),
-    init: () => {
-      ensureObjectField(conditionOccurrenceData.value, 'DateAdjustment', createDefaultDateAdjustment)
-    },
-    clear: () => {
-      delete conditionOccurrenceData.value.DateAdjustment
-    },
-    isActive: () => 'DateAdjustment' in conditionOccurrenceData.value,
-  },
-  {
-    key: 'OccurrenceStartDate',
-    label: 'Occurrence start date',
-    kind: 'dateRange',
-    componentProps: () => createSchemaFieldProps(
-      ensureObjectField(conditionOccurrenceData.value, 'OccurrenceStartDate', () => ({ Value: '', Op: 'gte', Extent: undefined })) as DateRange
-    ),
-    init: () => {
-      ensureObjectField(conditionOccurrenceData.value, 'OccurrenceStartDate', () => ({ Value: '', Op: 'gte', Extent: undefined }))
-    },
-    clear: () => {
-      delete conditionOccurrenceData.value.OccurrenceStartDate
-    },
-    isActive: () => 'OccurrenceStartDate' in conditionOccurrenceData.value,
-  },
-  {
-    key: 'OccurrenceEndDate',
-    label: 'Occurrence end date',
-    kind: 'dateRange',
-    componentProps: () => createSchemaFieldProps(
-      ensureObjectField(conditionOccurrenceData.value, 'OccurrenceEndDate', () => ({ Value: '', Op: 'gte', Extent: undefined })) as DateRange
-    ),
-    init: () => {
-      ensureObjectField(conditionOccurrenceData.value, 'OccurrenceEndDate', () => ({ Value: '', Op: 'gte', Extent: undefined }))
-    },
-    clear: () => {
-      delete conditionOccurrenceData.value.OccurrenceEndDate
-    },
-    isActive: () => 'OccurrenceEndDate' in conditionOccurrenceData.value,
-  },
-  {
-    key: 'ConditionSourceConcept',
-    label: 'Condition source concept',
-    kind: 'conceptSet',
-    componentProps: () => createConceptSetComponentProps(
-      conditionSourceConceptModel,
-      props.conceptSets,
-      'Select source concept',
-      target => emit('select-concept-set', target),
-      target => emit('edit-concept-set', target),
-    ),
-    init: () => {
-      conditionOccurrenceData.value.ConditionSourceConcept = undefined
-    },
-    clear: () => {
-      delete conditionOccurrenceData.value.ConditionSourceConcept
-    },
-    isActive: () => 'ConditionSourceConcept' in conditionOccurrenceData.value,
-  },
-  {
-    key: 'Gender',
-    label: 'Gender',
-    kind: 'conceptArray',
-    componentProps: () => ({
-      binding: {
-        concepts: toRef(conditionOccurrenceData.value, 'Gender'),
-      } satisfies ConceptArrayBinding,
-    }),
-    init: () => {
-      conditionOccurrenceData.value.Gender = []
-    },
-    clear: () => {
-      delete conditionOccurrenceData.value.Gender
-    },
-    isActive: () => 'Gender' in conditionOccurrenceData.value,
-  },
-  {
-    key: 'GenderCS',
-    label: 'Gender concept set',
-    kind: 'conceptSet',
-    componentProps: () => createConceptSetComponentProps(
-      ensureObjectField(conditionOccurrenceData.value, 'GenderCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
-      props.conceptSets,
-      'Gender concept set',
-      target => emit('select-concept-set', target),
-      target => emit('edit-concept-set', target),
-    ),
-    init: () => {
-      ensureObjectField(conditionOccurrenceData.value, 'GenderCS', () => ({ CodesetId: undefined, IsExclusion: false }))
-    },
-    clear: () => {
-      delete conditionOccurrenceData.value.GenderCS
-    },
-    isActive: () => 'GenderCS' in conditionOccurrenceData.value,
-  },
-  {
-    key: 'ProviderSpecialty',
-    label: 'Provider specialty',
-    kind: 'conceptArray',
-    componentProps: () => ({
-      binding: {
-        concepts: toRef(conditionOccurrenceData.value, 'ProviderSpecialty'),
-      } satisfies ConceptArrayBinding,
-    }),
-    init: () => {
-      conditionOccurrenceData.value.ProviderSpecialty = []
-    },
-    clear: () => {
-      delete conditionOccurrenceData.value.ProviderSpecialty
-    },
-    isActive: () => 'ProviderSpecialty' in conditionOccurrenceData.value,
-  },
-  {
-    key: 'ProviderSpecialtyCS',
-    label: 'Provider specialty concept set',
-    kind: 'conceptSet',
-    componentProps: () => createConceptSetComponentProps(
-      ensureObjectField(conditionOccurrenceData.value, 'ProviderSpecialtyCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
-      props.conceptSets,
-      'Provider specialty concept set',
-      target => emit('select-concept-set', target),
-      target => emit('edit-concept-set', target),
-    ),
-    init: () => {
-      ensureObjectField(conditionOccurrenceData.value, 'ProviderSpecialtyCS', () => ({ CodesetId: undefined, IsExclusion: false }))
-    },
-    clear: () => {
-      delete conditionOccurrenceData.value.ProviderSpecialtyCS
-    },
-    isActive: () => 'ProviderSpecialtyCS' in conditionOccurrenceData.value,
-  },
-  {
     key: 'VisitType',
-    label: 'Visit type',
+    label: 'Visit',
+    description: 'Filter based on visit occurrence',
     kind: 'conceptArray',
     componentProps: () => ({
       binding: {
@@ -303,12 +327,13 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'VisitTypeCS',
-    label: 'Visit type concept set',
+    label: 'Visit Type Concept Set',
+    description: 'Filter visit type by a concept set',
     kind: 'conceptSet',
     componentProps: () => createConceptSetComponentProps(
       ensureObjectField(conditionOccurrenceData.value, 'VisitTypeCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
       props.conceptSets,
-      'Visit type concept set',
+      t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value,
       target => emit('select-concept-set', target),
       target => emit('edit-concept-set', target),
     ),
@@ -321,44 +346,9 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
     isActive: () => 'VisitTypeCS' in conditionOccurrenceData.value,
   },
   {
-    key: 'ConditionStatus',
-    label: 'Condition status',
-    kind: 'conceptArray',
-    componentProps: () => ({
-      binding: {
-        concepts: toRef(conditionOccurrenceData.value, 'ConditionStatus'),
-      } satisfies ConceptArrayBinding,
-    }),
-    init: () => {
-      conditionOccurrenceData.value.ConditionStatus = []
-    },
-    clear: () => {
-      delete conditionOccurrenceData.value.ConditionStatus
-    },
-    isActive: () => 'ConditionStatus' in conditionOccurrenceData.value,
-  },
-  {
-    key: 'ConditionStatusCS',
-    label: 'Condition status concept set',
-    kind: 'conceptSet',
-    componentProps: () => createConceptSetComponentProps(
-      ensureObjectField(conditionOccurrenceData.value, 'ConditionStatusCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
-      props.conceptSets,
-      'Condition status concept set',
-      target => emit('select-concept-set', target),
-      target => emit('edit-concept-set', target),
-    ),
-    init: () => {
-      ensureObjectField(conditionOccurrenceData.value, 'ConditionStatusCS', () => ({ CodesetId: undefined, IsExclusion: false }))
-    },
-    clear: () => {
-      delete conditionOccurrenceData.value.ConditionStatusCS
-    },
-    isActive: () => 'ConditionStatusCS' in conditionOccurrenceData.value,
-  },
-  {
     key: 'StopReason',
-    label: 'Stop reason',
+    label: 'Stop Reason',
+    description: 'Filter by stop reason text',
     kind: 'textFilter',
     componentProps: () => createSchemaFieldProps(
       ensureObjectField(conditionOccurrenceData.value, 'StopReason', () => ({ Value: '', Op: 'contains' })) as TextFilter
@@ -372,8 +362,67 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
     isActive: () => 'StopReason' in conditionOccurrenceData.value,
   },
   {
+    key: 'ProviderSpecialty',
+    label: 'Provider Specialty',
+    description: 'Filter by provider specialty',
+    kind: 'conceptArray',
+    componentProps: () => ({
+      binding: {
+        concepts: toRef(conditionOccurrenceData.value, 'ProviderSpecialty'),
+      } satisfies ConceptArrayBinding,
+    }),
+    init: () => {
+      conditionOccurrenceData.value.ProviderSpecialty = []
+    },
+    clear: () => {
+      delete conditionOccurrenceData.value.ProviderSpecialty
+    },
+    isActive: () => 'ProviderSpecialty' in conditionOccurrenceData.value,
+  },
+  {
+    key: 'ProviderSpecialtyCS',
+    label: 'Provider Specialty Concept Set',
+    description: 'Filter provider specialty by a concept set',
+    kind: 'conceptSet',
+    componentProps: () => createConceptSetComponentProps(
+      ensureObjectField(conditionOccurrenceData.value, 'ProviderSpecialtyCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
+      props.conceptSets,
+      t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value,
+      target => emit('select-concept-set', target),
+      target => emit('edit-concept-set', target),
+    ),
+    init: () => {
+      ensureObjectField(conditionOccurrenceData.value, 'ProviderSpecialtyCS', () => ({ CodesetId: undefined, IsExclusion: false }))
+    },
+    clear: () => {
+      delete conditionOccurrenceData.value.ProviderSpecialtyCS
+    },
+    isActive: () => 'ProviderSpecialtyCS' in conditionOccurrenceData.value,
+  },
+  {
+    key: 'ConditionSourceConcept',
+    label: 'Condition Source Concept',
+    description: 'Filter by condition source concept',
+    kind: 'conceptSet',
+    componentProps: () => createConceptSetComponentProps(
+      conditionSourceConceptModel,
+      props.conceptSets,
+      t('components.eventCard.selectSourceConcept', 'Select Source Concept').value,
+      target => emit('select-concept-set', target),
+      target => emit('edit-concept-set', target),
+    ),
+    init: () => {
+      conditionOccurrenceData.value.ConditionSourceConcept = undefined
+    },
+    clear: () => {
+      delete conditionOccurrenceData.value.ConditionSourceConcept
+    },
+    isActive: () => 'ConditionSourceConcept' in conditionOccurrenceData.value,
+  },
+  {
     key: 'CorrelatedCriteria',
     label: 'Nested Criteria',
+    description: 'Add nested criteria group',
     kind: 'criteriaGroup',
     componentProps: () => ({
       group: ensureObjectField(conditionOccurrenceData.value, 'CorrelatedCriteria', () => ({})) as CriteriaGroup,

@@ -1,3 +1,4 @@
+import { useI18n } from '@/composables/useI18n'
 import type { Offset, Window } from '../circe.types'
 
 export interface WindowPresetValue {
@@ -29,59 +30,65 @@ export function cloneWindow(window: Window): Window {
 }
 
 export function formatWindowSummary(window?: Window, label = 'Window'): string {
+  const { t } = useI18n()
+
   if (!window) {
-    return `${label}: not set`
+    return `${label}: ${t('common.notSet', 'not set').value}`
   }
 
   return formatWindowExpression(window)
 }
 
 export function formatWindowExpression(window?: Window): string {
+  const { t } = useI18n()
+
   if (!window) {
-    return 'No window'
+    return t('common.noWindow', 'No window').value
   }
 
-  return `${formatAnchor(window)} between ${formatEndpoint(window.Start)} and ${formatEndpoint(window.End)} ${formatIndexAnchor(window)}`
+  return `${formatAnchor(window)} ${t('common.between', 'between').value} ${formatEndpoint(window.Start)} ${t('common.and', 'and').value} ${formatEndpoint(window.End)} ${formatIndexAnchor(window)}`
 }
 
 export function getWindowPresetOptions(): WindowPresetOption[] {
+  const { t } = useI18n()
+
   return [
-    buildPreset('Short-term baseline (−30 to 0 days)',
+    buildPreset(t('components.temporalWindowEditor.shortTermBaseline', 'Short-term baseline (−30 to 0 days)').value,
       createWindow(30, 'before', 0, 'after'),
       undefined
     ),
-    buildPreset('Medium-term baseline (−180 to 0 days)',
+    buildPreset(t('components.temporalWindowEditor.mediumTermBaseline', 'Medium-term baseline (−180 to 0 days)').value,
       createWindow(180, 'before', 0, 'after'),
       undefined
     ),
-    buildPreset('Long-term baseline (−365 to 0 days)',
+    buildPreset(t('components.temporalWindowEditor.longTermBaseline', 'Long-term baseline (−365 to 0 days)').value,
       createWindow(365, 'before', 0, 'after'),
       undefined
     ),
-    buildPreset('All time prior to index',
+    buildPreset(t('components.temporalWindowEditor.allTimePriorToIndex', 'All time prior to index').value,
       createWindow(null, 'before', 0, 'after'),
       undefined
     ),
-    buildPreset('On index date',
+    buildPreset(t('components.temporalWindowEditor.onIndexDate', 'On index date').value,
       createWindow(0, 'after', 0, 'after'),
       createWindow(0, 'after', 0, 'after')
     ),
-    buildPreset('Acute follow-up (0 to 30 days after)',
+    buildPreset(t('components.temporalWindowEditor.acuteFollowUp', 'Acute follow-up (0 to 30 days after)').value,
       createWindow(0, 'after', 0, 'after'),
       undefined
     ),
-    buildPreset('90-day follow-up (0 to 90 days after)',
+    buildPreset(t('components.temporalWindowEditor.ninetyDayFollowUp', '90-day follow-up (0 to 90 days after)').value,
       createWindow(0, 'after', 0, 'after'),
       createWindow(0, 'after', 90, 'after')
     ),
-    buildPreset('1-year follow-up (0 to 365 days after)',
+    buildPreset(t('components.temporalWindowEditor.oneYearFollowUp', '1-year follow-up (0 to 365 days after)').value,
       createWindow(0, 'after', 0, 'after'),
       createWindow(0, 'after', 365, 'after')
     ),
-    buildPreset('All time after index',
+    buildPreset(t('components.temporalWindowEditor.allTimeAfterIndex', 'All time after index').value,
       createWindow(0, 'after', 0, 'after'),
       undefined
-    ),buildPreset('event overlapps with index',
+    ),buildPreset(t('components.temporalWindowEditor.eventOverlapsWithIndex', 'event overlapps with index').value,
       createWindow(0, 'after', null, 'after',false, true),
       createWindow(null, 'before', 0, 'after',true, false)
     ),
@@ -135,28 +142,34 @@ function cloneEndpoint(endpoint: Offset | undefined, defaultCoeff: number): Offs
 }
 
 function formatEndpoint(endpoint: Offset | undefined): string {
+  const { t } = useI18n()
+
   if (!endpoint) {
-    return 'unset'
+    return t('common.unset', 'unset').value
   }
 
-  const direction = endpoint.Coeff === -1 ? 'before' : 'after'
-  const days = endpoint.Days === null || endpoint.Days === undefined ? 'all days' : `${endpoint.Days} day${endpoint.Days === 1 ? '' : 's'}`
+  const direction = endpoint.Coeff === -1 ? t('options.before', 'before').value : t('options.after', 'after').value
+  const days = endpoint.Days === null || endpoint.Days === undefined ? t('common.allDays', 'all days').value : `${endpoint.Days} ${endpoint.Days === 1 ? t('common.day', 'day').value : t('common.days', 'days').value}`
 
   return `${days} ${direction}`
 }
 
 function formatAnchor(window: Pick<Window, 'UseIndexEnd' | 'UseEventEnd'>): string {
-  return window.UseEventEnd ? 'event ends' : 'event starts'
+  const { t } = useI18n()
+
+  return window.UseEventEnd ? t('common.eventEnds', 'event ends').value : t('common.eventStarts', 'event starts').value
 }
 
 function formatIndexAnchor(window: Pick<Window, 'UseIndexEnd' | 'UseEventEnd'>): string {
+  const { t } = useI18n()
+
   if (window.UseIndexEnd && window.UseEventEnd) {
-    return 'index end'
+    return t('common.indexEnds', 'index end').value
   }
 
   if (window.UseIndexEnd) {
-    return 'index end'
+    return t('common.indexEnds', 'index end').value
   }
 
-  return 'index start'
+  return t('common.indexStarts', 'index start').value
 }

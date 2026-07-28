@@ -8,7 +8,7 @@
       v-if="!props.compact"
       class="event-concept-set-field__title"
     >
-      {{ props.label ?? 'Concept set' }}
+      {{ titleLabel }}
     </div>
     <div class="event-concept-set-field__input">
       <v-btn
@@ -24,7 +24,7 @@
         >
           mdi-plus
         </v-icon>
-        {{ props.selectLabel ?? 'Select concept set' }}
+        {{ selectLabel }}
       </v-btn>
 
       <v-chip
@@ -45,8 +45,11 @@
 
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import type { ConceptSetOption, ConceptSetSelectionTarget } from '../criteria/criteria-editor.types'
 import type { ConceptSetSelection } from '../circe.types'
+
+const { t } = useI18n()
 
 const props = withDefaults(
   defineProps<{
@@ -65,6 +68,11 @@ const props = withDefaults(
     pickerTestId: 'concept-set-picker',
     chipTestId: 'selected-concept-set',
   }
+)
+
+const titleLabel = computed(() => props.label ?? t('common.conceptSet', 'Concept Set').value)
+const selectLabel = computed(() =>
+  props.selectLabel ?? t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value
 )
 
 const selectionTarget = computed<ConceptSetSelectionTarget | undefined>(() => {

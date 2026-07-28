@@ -35,22 +35,25 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import type { NumericRange, NumericRangeOp } from '../circe.types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue?: NumericRange
 }>()
 
-const operators = [
-  { title: 'less than', value: 'lt' },
-  { title: 'less than or equal', value: 'lte' },
-  { title: 'equal', value: 'eq' },
-  { title: 'not equal', value: '!eq' },
-  { title: 'greater than', value: 'gt' },
-  { title: 'greater than or equal', value: 'gte' },
-  { title: 'between', value: 'bt' },
-  { title: 'not between', value: '!bt' },
-]
+const operators = computed(() => [
+  { title: t('options.lessThan', 'less than').value, value: 'lt' },
+  { title: t('options.lessThanOrEqual', 'less than or equal').value, value: 'lte' },
+  { title: t('options.equal', 'equal').value, value: 'eq' },
+  { title: t('options.notEqual', 'not equal').value, value: '!eq' },
+  { title: t('options.greaterThan', 'greater than').value, value: 'gt' },
+  { title: t('options.greaterThanOrEqual', 'greater than or equal').value, value: 'gte' },
+  { title: t('options.between', 'between').value, value: 'bt' },
+  { title: t('options.notBetween', 'not between').value, value: '!bt' },
+])
 const defaultOperator = 'gte'
 
 const activeValue = computed(() => props.modelValue)

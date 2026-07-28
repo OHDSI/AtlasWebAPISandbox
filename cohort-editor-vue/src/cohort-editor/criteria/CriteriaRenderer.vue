@@ -41,9 +41,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { getCriteriaWrapperKey, type Criteria, type CriteriaWrapperKey } from '../circe.types'
-import ConditionEraEditor from './ConditionEraEditor.vue'
-import ConditionOccurrenceEditor from './ConditionOccurrenceEditor.vue'
-import DrugExposureEditor from './DrugExposureEditor.vue'
+import ConditionEra from './ConditionEra.vue'
+import ConditionOccurrence from './ConditionOccurrence.vue'
+import Death from './Death.vue'
+import DeviceExposure from './DeviceExposure.vue'
+import DoseEra from './DoseEra.vue'
+import DrugEra from './DrugEra.vue'
+import DrugExposure from './DrugExposure.vue'
+import Measurement from './Measurement.vue'
+import Observation from './Observation.vue'
+import ObservationPeriod from './ObservationPeriod.vue'
+import PayerPlanPeriod from './PayerPlanPeriod.vue'
+import ProcedureOccurrence from './ProcedureOccurrence.vue'
+import Specimen from './Specimen.vue'
+import VisitDetail from './VisitDetail.vue'
+import VisitOccurrence from './VisitOccurrence.vue'
 import type { ConceptSetOption, ConceptSetSelectionTarget } from './criteria-editor.types'
 
 const props = defineProps<{
@@ -61,9 +73,21 @@ defineEmits<{
 const wrapperKey = computed(() => getCriteriaWrapperKey(props.criteria))
 
 const editorMap: Partial<Record<CriteriaWrapperKey, unknown>> = {
-  ConditionEra: ConditionEraEditor,
-  ConditionOccurrence: ConditionOccurrenceEditor,
-  DrugExposure: DrugExposureEditor,
+  ConditionEra: ConditionEra,
+  ConditionOccurrence: ConditionOccurrence,
+  Death: Death,
+  DeviceExposure: DeviceExposure,
+  DoseEra: DoseEra,
+  DrugEra: DrugEra,
+  DrugExposure: DrugExposure,
+  Measurement: Measurement,
+  Observation: Observation,
+  ObservationPeriod: ObservationPeriod,
+  PayerPlanPeriod: PayerPlanPeriod,
+  ProcedureOccurrence: ProcedureOccurrence,
+  Specimen: Specimen,
+  VisitDetail: VisitDetail,
+  VisitOccurrence: VisitOccurrence,
 }
 
 const editorComponent = computed(() => editorMap[wrapperKey.value])

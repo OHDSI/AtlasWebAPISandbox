@@ -7,14 +7,14 @@
     <v-card-text class="drug-exposure-editor__header d-flex align-center ga-3 py-3">
       <div class="drug-exposure-editor__title-block d-flex align-center ga-3 flex-wrap">
         <div class="drug-exposure-editor__type">
-          Drug exposure of:
+          {{ drugExposureTitle }}
         </div>
 
         <EventConceptSet
           compact
           :concept-sets="conceptSets"
           :model-value="drugExposureConceptSetModel"
-          :select-label="'Select concept set'"
+          :select-label="selectConceptSetLabel"
           @select="emit('select-concept-set', $event)"
           @edit="emit('edit-concept-set', $event)"
           @clear="emit('clear-concept-set')"
@@ -37,7 +37,7 @@
             icon="mdi-plus"
             :disabled="!canAddAttribute"
           >
-            Add Attribute
+            {{ addAttributeLabel }}
           </AtlasButton>
         </template>
 
@@ -63,7 +63,7 @@
     <v-divider />
 
     <v-card-text>
-      <CriteriaAttributesEditor
+      <CriteriaAttributes
         :attributes="activeAttributes"
         :concept-sets="conceptSets"
         @select-concept-set="emit('select-concept-set', $event)"
@@ -76,10 +76,11 @@
 
 <script setup lang="ts">
 import { computed, toRef } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import { AtlasButton } from '@/components/ui'
 import type { Criteria, CriteriaGroup, ConceptSetSelection, DateAdjustment, DateRange, NumericRange, TextFilter } from '../circe.types'
 import EventConceptSet from '../input/EventConceptSet.vue'
-import CriteriaAttributesEditor from './CriteriaAttributesEditor.vue'
+import CriteriaAttributes from './CriteriaAttributes.vue'
 import { createConceptSetComponentProps, createDefaultDateAdjustment, createSchemaFieldProps, ensureObjectField } from './criteria-editor-helper'
 import type { ConceptArrayBinding, ConceptSetOption, ConceptSetSelectionTarget } from './criteria-editor.types'
 import type { CriteriaAttributeSpec } from './criteria-editor.types'
@@ -96,10 +97,23 @@ const emit = defineEmits<{
   'clear-concept-set': []
 }>()
 
+const { t } = useI18n()
+
+const drugExposureTitle = computed(() =>
+  t('components.conditionDrugExposure.conditionDrugExposureText_1', 'a drug exposure of').value
+)
+const addAttributeLabel = computed(() =>
+  t('components.conditionDrugExposure.addAttribute', 'Add attribute...').value
+)
+const selectConceptSetLabel = computed(() =>
+  t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value
+)
+
 const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   {
     key: 'First',
-    label: 'First in history',
+    label: 'First Exposure',
+    description: 'Limit to first exposure in history',
     init: () => {
       drugExposureData.value.First = true
     },
@@ -109,8 +123,63 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
     isActive: () => drugExposureData.value.First === true,
   },
   {
+    key: 'Age',
+    label: 'Age',
+    description: 'Filter by age at time of event',
+    kind: 'numericRange',
+    componentProps: () => createSchemaFieldProps(
+      ensureObjectField(drugExposureData.value, 'Age', () => ({ Value: undefined, Op: 'gte', Extent: undefined })) as NumericRange
+    ),
+    init: () => {
+      ensureObjectField(drugExposureData.value, 'Age', () => ({ Value: undefined, Op: 'gte', Extent: undefined }))
+    },
+    clear: () => {
+      delete drugExposureData.value.Age
+    },
+    isActive: () => 'Age' in drugExposureData.value,
+  },
+  {
+    key: 'Gender',
+    label: 'Gender',
+    description: 'Filter by patient gender',
+    kind: 'conceptArray',
+    componentProps: () => ({
+      binding: {
+        concepts: toRef(drugExposureData.value, 'Gender'),
+      } satisfies ConceptArrayBinding,
+    }),
+    init: () => {
+      drugExposureData.value.Gender = []
+    },
+    clear: () => {
+      delete drugExposureData.value.Gender
+    },
+    isActive: () => 'Gender' in drugExposureData.value,
+  },
+  {
+    key: 'GenderCS',
+    label: 'Gender Concept Set',
+    description: 'Filter gender by a concept set',
+    kind: 'conceptSet',
+    componentProps: () => createConceptSetComponentProps(
+      ensureObjectField(drugExposureData.value, 'GenderCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
+      props.conceptSets,
+      t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value,
+      target => emit('select-concept-set', target),
+      target => emit('edit-concept-set', target),
+    ),
+    init: () => {
+      ensureObjectField(drugExposureData.value, 'GenderCS', () => ({ CodesetId: undefined, IsExclusion: false }))
+    },
+    clear: () => {
+      delete drugExposureData.value.GenderCS
+    },
+    isActive: () => 'GenderCS' in drugExposureData.value,
+  },
+  {
     key: 'DateAdjustment',
-    label: 'Date adjustment',
+    label: 'Date Adjustment',
+    description: 'Adjust event dates',
     kind: 'dateAdjustment',
     componentProps: () => createSchemaFieldProps(
       ensureObjectField(drugExposureData.value, 'DateAdjustment', createDefaultDateAdjustment) as DateAdjustment
@@ -125,7 +194,8 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'OccurrenceStartDate',
-    label: 'Occurrence start date',
+    label: 'Start Date',
+    description: 'Filter by start date',
     kind: 'dateRange',
     componentProps: () => createSchemaFieldProps(
       ensureObjectField(drugExposureData.value, 'OccurrenceStartDate', () => ({ Value: '', Op: 'gte', Extent: undefined })) as DateRange
@@ -140,7 +210,8 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'OccurrenceEndDate',
-    label: 'Occurrence end date',
+    label: 'End Date',
+    description: 'Filter by end date',
     kind: 'dateRange',
     componentProps: () => createSchemaFieldProps(
       ensureObjectField(drugExposureData.value, 'OccurrenceEndDate', () => ({ Value: '', Op: 'gte', Extent: undefined })) as DateRange
@@ -155,7 +226,8 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'DrugType',
-    label: 'Drug type',
+    label: 'Drug Type',
+    description: 'Filter by drug type',
     kind: 'conceptArray',
     componentProps: () => ({
       binding: {
@@ -175,12 +247,13 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'DrugTypeCS',
-    label: 'Drug type concept set',
+    label: 'Drug Type Concept Set',
+    description: 'Filter drug type by a concept set',
     kind: 'conceptSet',
     componentProps: () => createConceptSetComponentProps(
       ensureObjectField(drugExposureData.value, 'DrugTypeCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
       props.conceptSets,
-      'Drug type concept set',
+      t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value,
       target => emit('select-concept-set', target),
       target => emit('edit-concept-set', target),
     ),
@@ -194,7 +267,8 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'StopReason',
-    label: 'Stop reason',
+    label: 'Stop Reason',
+    description: 'Filter by stop reason text',
     kind: 'textFilter',
     componentProps: () => createSchemaFieldProps(
       ensureObjectField(drugExposureData.value, 'StopReason', () => ({ Value: '', Op: 'contains' })) as TextFilter
@@ -210,6 +284,7 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   {
     key: 'Refills',
     label: 'Refills',
+    description: 'Filter by number of refills',
     kind: 'numericRange',
     componentProps: () => createSchemaFieldProps(
       ensureObjectField(drugExposureData.value, 'Refills', () => ({ Value: undefined, Op: 'gte', Extent: undefined })) as NumericRange
@@ -225,6 +300,7 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   {
     key: 'Quantity',
     label: 'Quantity',
+    description: 'Filter by quantity',
     kind: 'numericRange',
     componentProps: () => createSchemaFieldProps(
       ensureObjectField(drugExposureData.value, 'Quantity', () => ({ Value: undefined, Op: 'gte', Extent: undefined })) as NumericRange
@@ -239,7 +315,8 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'DaysSupply',
-    label: 'Days supply',
+    label: 'Days Supply',
+    description: 'Filter by days of drug supply',
     kind: 'numericRange',
     componentProps: () => createSchemaFieldProps(
       ensureObjectField(drugExposureData.value, 'DaysSupply', () => ({ Value: undefined, Op: 'gte', Extent: undefined })) as NumericRange
@@ -253,23 +330,9 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
     isActive: () => 'DaysSupply' in drugExposureData.value,
   },
   {
-    key: 'Dose',
-    label: 'Dose',
-    kind: 'numericRange',
-    componentProps: () => createSchemaFieldProps(
-      ensureObjectField(drugExposureData.value, 'Dose', () => ({ Value: undefined, Op: 'gte', Extent: undefined })) as NumericRange
-    ),
-    init: () => {
-      ensureObjectField(drugExposureData.value, 'Dose', () => ({ Value: undefined, Op: 'gte', Extent: undefined }))
-    },
-    clear: () => {
-      delete drugExposureData.value.Dose
-    },
-    isActive: () => 'Dose' in drugExposureData.value,
-  },
-  {
     key: 'RouteConcept',
-    label: 'Route concept',
+    label: 'Route',
+    description: 'Filter by route of administration',
     kind: 'conceptArray',
     componentProps: () => ({
       binding: {
@@ -286,12 +349,13 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'RouteConceptCS',
-    label: 'Route concept set',
+    label: 'Route Concept Set',
+    description: 'Filter route by a concept set',
     kind: 'conceptSet',
     componentProps: () => createConceptSetComponentProps(
       ensureObjectField(drugExposureData.value, 'RouteConceptCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
       props.conceptSets,
-      'Route concept set',
+      t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value,
       target => emit('select-concept-set', target),
       target => emit('edit-concept-set', target),
     ),
@@ -304,27 +368,9 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
     isActive: () => 'RouteConceptCS' in drugExposureData.value,
   },
   {
-    key: 'DrugSourceConcept',
-    label: 'Drug source concept',
-    kind: 'conceptSet',
-    componentProps: () => createConceptSetComponentProps(
-      drugSourceConceptModel,
-      props.conceptSets,
-      'Select source concept',
-      target => emit('select-concept-set', target),
-      target => emit('edit-concept-set', target),
-    ),
-    init: () => {
-      drugExposureData.value.DrugSourceConcept = undefined
-    },
-    clear: () => {
-      delete drugExposureData.value.DrugSourceConcept
-    },
-    isActive: () => 'DrugSourceConcept' in drugExposureData.value,
-  },
-  {
     key: 'EffectiveDrugDose',
-    label: 'Effective drug dose',
+    label: 'Effective Drug Dose',
+    description: 'Filter by effective drug dose',
     kind: 'numericRange',
     componentProps: () => createSchemaFieldProps(
       ensureObjectField(drugExposureData.value, 'EffectiveDrugDose', () => ({ Value: undefined, Op: 'gte', Extent: undefined })) as NumericRange
@@ -339,7 +385,8 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'DoseUnit',
-    label: 'Dose unit',
+    label: 'Dose Unit',
+    description: 'Filter by dose unit',
     kind: 'conceptArray',
     componentProps: () => ({
       binding: {
@@ -356,12 +403,13 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'DoseUnitCS',
-    label: 'Dose unit concept set',
+    label: 'Dose Unit Concept Set',
+    description: 'Filter dose unit by a concept set',
     kind: 'conceptSet',
     componentProps: () => createConceptSetComponentProps(
       ensureObjectField(drugExposureData.value, 'DoseUnitCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
       props.conceptSets,
-      'Dose unit concept set',
+      t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value,
       target => emit('select-concept-set', target),
       target => emit('edit-concept-set', target),
     ),
@@ -375,7 +423,8 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'LotNumber',
-    label: 'Lot number',
+    label: 'Lot Number',
+    description: 'Filter by lot number',
     kind: 'textFilter',
     componentProps: () => createSchemaFieldProps(
       ensureObjectField(drugExposureData.value, 'LotNumber', () => ({ Value: '', Op: 'contains' })) as TextFilter
@@ -389,59 +438,9 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
     isActive: () => 'LotNumber' in drugExposureData.value,
   },
   {
-    key: 'Age',
-    label: 'Age',
-    kind: 'numericRange',
-    componentProps: () => createSchemaFieldProps(
-      ensureObjectField(drugExposureData.value, 'Age', () => ({ Value: undefined, Op: 'gte', Extent: undefined })) as NumericRange
-    ),
-    init: () => {
-      ensureObjectField(drugExposureData.value, 'Age', () => ({ Value: undefined, Op: 'gte', Extent: undefined }))
-    },
-    clear: () => {
-      delete drugExposureData.value.Age
-    },
-    isActive: () => 'Age' in drugExposureData.value,
-  },
-  {
-    key: 'Gender',
-    label: 'Gender',
-    kind: 'conceptArray',
-    componentProps: () => ({
-      binding: {
-        concepts: toRef(drugExposureData.value, 'Gender'),
-      } satisfies ConceptArrayBinding,
-    }),
-    init: () => {
-      drugExposureData.value.Gender = []
-    },
-    clear: () => {
-      delete drugExposureData.value.Gender
-    },
-    isActive: () => 'Gender' in drugExposureData.value,
-  },
-  {
-    key: 'GenderCS',
-    label: 'Gender concept set',
-    kind: 'conceptSet',
-    componentProps: () => createConceptSetComponentProps(
-      ensureObjectField(drugExposureData.value, 'GenderCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
-      props.conceptSets,
-      'Gender concept set',
-      target => emit('select-concept-set', target),
-      target => emit('edit-concept-set', target),
-    ),
-    init: () => {
-      ensureObjectField(drugExposureData.value, 'GenderCS', () => ({ CodesetId: undefined, IsExclusion: false }))
-    },
-    clear: () => {
-      delete drugExposureData.value.GenderCS
-    },
-    isActive: () => 'GenderCS' in drugExposureData.value,
-  },
-  {
     key: 'ProviderSpecialty',
-    label: 'Provider specialty',
+    label: 'Provider Specialty',
+    description: 'Filter by provider specialty',
     kind: 'conceptArray',
     componentProps: () => ({
       binding: {
@@ -458,12 +457,13 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
   },
   {
     key: 'ProviderSpecialtyCS',
-    label: 'Provider specialty concept set',
+    label: 'Provider Specialty Concept Set',
+    description: 'Filter provider specialty by a concept set',
     kind: 'conceptSet',
     componentProps: () => createConceptSetComponentProps(
       ensureObjectField(drugExposureData.value, 'ProviderSpecialtyCS', () => ({ CodesetId: undefined, IsExclusion: false })) as ConceptSetSelection,
       props.conceptSets,
-      'Provider specialty concept set',
+      t('components.conceptAddBox.selectConceptSet', 'Select Concept Set').value,
       target => emit('select-concept-set', target),
       target => emit('edit-concept-set', target),
     ),
@@ -476,8 +476,29 @@ const attributeSpecs = computed<CriteriaAttributeSpec[]>(() => [
     isActive: () => 'ProviderSpecialtyCS' in drugExposureData.value,
   },
   {
+    key: 'DrugSourceConcept',
+    label: 'Drug Source Concept',
+    description: 'Filter by drug source concept',
+    kind: 'conceptSet',
+    componentProps: () => createConceptSetComponentProps(
+      drugSourceConceptModel,
+      props.conceptSets,
+      t('components.eventCard.selectSourceConcept', 'Select Source Concept').value,
+      target => emit('select-concept-set', target),
+      target => emit('edit-concept-set', target),
+    ),
+    init: () => {
+      drugExposureData.value.DrugSourceConcept = undefined
+    },
+    clear: () => {
+      delete drugExposureData.value.DrugSourceConcept
+    },
+    isActive: () => 'DrugSourceConcept' in drugExposureData.value,
+  },
+  {
     key: 'CorrelatedCriteria',
     label: 'Nested Criteria',
+    description: 'Add nested criteria group',
     kind: 'criteriaGroup',
     componentProps: () => ({
       group: ensureObjectField(drugExposureData.value, 'CorrelatedCriteria', () => ({})) as CriteriaGroup,

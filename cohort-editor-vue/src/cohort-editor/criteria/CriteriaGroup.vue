@@ -17,8 +17,7 @@
           >
             <div
               class="vertical-label match-type-label"
-              :data-type="group.Type || 'ALL'"
-              :title="'Click to change group match type'"
+              :title="matchTypeChangeLabel"
             >
               {{ groupTypeLabel }}
             </div>
@@ -34,7 +33,7 @@
                 size="small"
                 @click="groupType = 'ALL'"
               >
-                All
+                {{ t('options.all', 'All').value }}
               </v-btn>
               <v-btn
                 :variant="groupType === 'ANY' ? 'tonal' : 'outlined'"
@@ -42,7 +41,7 @@
                 size="small"
                 @click="groupType = 'ANY'"
               >
-                Any
+                {{ t('options.any', 'Any').value }}
               </v-btn>
               <v-btn
                 :variant="groupType === 'AT_LEAST' ? 'tonal' : 'outlined'"
@@ -50,7 +49,7 @@
                 size="small"
                 @click="groupType = 'AT_LEAST'"
               >
-                At least
+                {{ t('options.atLeast', 'At least').value }}
               </v-btn>
               <v-btn
                 :variant="groupType === 'AT_MOST' ? 'tonal' : 'outlined'"
@@ -58,7 +57,7 @@
                 size="small"
                 @click="groupType = 'AT_MOST'"
               >
-                At most
+                {{ t('options.atMost', 'At most').value }}
               </v-btn>
             </div>
 
@@ -68,7 +67,7 @@
               class="mt-3"
               density="compact"
               hide-details
-              label="Count"
+              :label="groupCountLabel"
               min="1"
               type="number"
             />
@@ -86,22 +85,16 @@
                 size="small"
                 prepend-icon="mdi-plus"
               >
-                Add Criteria
+                {{ addCriteriaLabel }}
               </v-btn>
             </template>
 
             <v-list density="compact">
               <v-list-item
-                title="ConditionOccurrence"
-                @click="addCriteria('ConditionOccurrence')"
-              />
-              <v-list-item
-                title="ConditionEra"
-                @click="addCriteria('ConditionEra')"
-              />
-              <v-list-item
-                title="DrugExposure"
-                @click="addCriteria('DrugExposure')"
+                v-for="criteriaType in criteriaTypeOptions"
+                :key="criteriaType.value"
+                :title="criteriaType.title"
+                @click="onAddCriteria(criteriaType.value)"
               />
             </v-list>
           </v-menu>
@@ -112,7 +105,7 @@
             prepend-icon="mdi-folder-plus"
             @click="addNestedGroup"
           >
-            Add Group
+            {{ addGroupLabel }}
           </v-btn>
 
           <v-spacer />
@@ -133,11 +126,11 @@
           density="compact"
           class="mb-3"
         >
-          Deep nesting detected at level {{ depth }}.
+          {{ deepNestingLabel }} ({{ depth }})
         </v-alert>
 
         <div v-if="criteriaList.length > 0">
-          <CorelatedCriteriaEditor
+          <CorelatedCriteria
             v-for="(criteriaItem, index) in criteriaList"
             :key="`criteria-${index}`"
             :criteria="criteriaItem"
@@ -156,11 +149,11 @@
           density="compact"
           class="mb-3"
         >
-          No correlated criteria in this group yet.
+          {{ noCriteriaLabel }}
         </v-alert>
 
         <div v-if="nestedGroups.length > 0">
-          <CriteriaGroupEditor
+          <CriteriaGroup
             v-for="(nestedGroup, index) in nestedGroups"
             :key="`group-${index}`"
             :group="nestedGroup"
@@ -180,12 +173,15 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { CriteriaGroup, CorelatedCriteria } from '../circe.types'
+import { useI18n } from '@/composables/useI18n'
+import type { CriteriaGroup, CorelatedCriteria as CorelatedCriteriaType } from '../circe.types'
 import type { ConceptSetOption, ConceptSetSelectionTarget } from './criteria-editor.types'
 import { createDefaultWindow } from './window-utils'
-import CorelatedCriteriaEditor from './CorelatedCriteriaEditor.vue'
+import CorelatedCriteria from './CorelatedCriteria.vue'
 
-defineOptions({ name: 'CriteriaGroupEditor' })
+type CriteriaType = 'ConditionOccurrence' | 'ConditionEra' | 'DrugExposure' | 'DeviceExposure' | 'Death' | 'DoseEra' | 'DrugEra' | 'Measurement' | 'Observation' | 'ObservationPeriod' | 'PayerPlanPeriod' | 'ProcedureOccurrence' | 'Specimen' | 'VisitDetail' | 'VisitOccurrence'
+
+defineOptions({ name: 'CriteriaGroup' })
 
 const props = defineProps<{
   group: CriteriaGroup
@@ -199,6 +195,8 @@ const emit = defineEmits<{
   'edit-concept-set': [target: ConceptSetSelectionTarget | undefined]
   'clear-concept-set': []
 }>()
+
+const { t } = useI18n()
 
 const depth = computed(() => props.depth ?? 0)
 
@@ -226,16 +224,40 @@ const groupCount = computed({
 const groupTypeLabel = computed(() => {
   switch (groupType.value) {
     case 'ANY':
-      return 'ANY'
+      return t('options.any', 'Any').value.toUpperCase()
     case 'AT_LEAST':
-      return 'AT LEAST'
+      return t('options.atLeast', 'At least').value.toUpperCase()
     case 'AT_MOST':
-      return 'AT MOST'
+      return t('options.atMost', 'At most').value.toUpperCase()
     case 'ALL':
     default:
-      return 'ALL'
+      return t('options.all', 'All').value.toUpperCase()
   }
 })
+
+const matchTypeChangeLabel = computed(() => t('components.criteriaGroup.clickToChangeMatchType', 'Click to change group match type').value)
+const groupCountLabel = computed(() => t('columns.count', 'Count').value)
+const addCriteriaLabel = computed(() => t('components.criteriaGroup.addCriteria', 'Add Criteria').value)
+const addGroupLabel = computed(() => t('components.criteriaGroup.addNestedGroup', 'Add Group').value)
+const deepNestingLabel = computed(() => t('components.criteriaGroup.nestedCriteria.depthWarning', 'Deep nesting detected').value)
+const noCriteriaLabel = computed(() => t('components.criteriaGroup.noEventsInGroup', 'No correlated criteria in this group yet.').value)
+const criteriaTypeOptions = computed<Array<{ title: string; value: CriteriaType }>>(() => [
+  { title: t('criteria.conditionOccurrence.name', 'Condition Occurrence').value, value: 'ConditionOccurrence' },
+  { title: t('criteria.conditionEra.name', 'Condition Era').value, value: 'ConditionEra' },
+  { title: t('criteria.drugExposure.name', 'Drug Exposure').value, value: 'DrugExposure' },
+  { title: t('criteria.drugEra.name', 'Drug Era').value, value: 'DrugEra' },
+  { title: t('criteria.doseEra.name', 'Dose Era').value, value: 'DoseEra' },
+  { title: t('criteria.measurement.name', 'Measurement').value, value: 'Measurement' },
+  { title: t('criteria.observation.name', 'Observation').value, value: 'Observation' },
+  { title: t('criteria.observationPeriod.name', 'Observation Period').value, value: 'ObservationPeriod' },
+  { title: t('criteria.payerPlanPeriod.name', 'Payer Plan Period').value, value: 'PayerPlanPeriod' },
+  { title: t('criteria.procedureOccurrence.name', 'Procedure Occurrence').value, value: 'ProcedureOccurrence' },
+  { title: t('criteria.specimen.name', 'Specimen').value, value: 'Specimen' },
+  { title: t('criteria.visitDetail.name', 'Visit Detail').value, value: 'VisitDetail' },
+  { title: t('criteria.visitOccurrence.name', 'Visit Occurrence').value, value: 'VisitOccurrence' },
+  { title: t('criteria.deviceExposure.name', 'Device Exposure').value, value: 'DeviceExposure' },
+  { title: t('criteria.death.name', 'Death').value, value: 'Death' },
+])
 
 const criteriaList = computed(() => ensureCriteriaList())
 const nestedGroups = computed(() => ensureNestedGroups())
@@ -254,7 +276,7 @@ function ensureNestedGroups() {
   return props.group.Groups
 }
 
-function createDefaultCorelatedCriteria(): CorelatedCriteria {
+function createDefaultCorelatedCriteria(): CorelatedCriteriaType {
   return {
     Criteria: { ConditionOccurrence: {} },
     Occurrence: {
@@ -267,12 +289,16 @@ function createDefaultCorelatedCriteria(): CorelatedCriteria {
   }
 }
 
-function addCriteria(type: 'ConditionOccurrence' | 'ConditionEra' | 'DrugExposure') {
+function addCriteria(type: CriteriaType) {
   const criteria = createDefaultCorelatedCriteria()
   criteria.Criteria = {
     [type]: {},
-  } as CorelatedCriteria['Criteria']
+  } as CorelatedCriteriaType['Criteria']
   ensureCriteriaList().push(criteria)
+}
+
+function onAddCriteria(type: CriteriaType) {
+  addCriteria(type)
 }
 
 function addNestedGroup() {

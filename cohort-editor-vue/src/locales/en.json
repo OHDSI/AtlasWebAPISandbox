@@ -1,0 +1,271 @@
+{
+  "locale": "en",
+  "format": {
+    "date": {
+      "datetime": "MM/DD/YYYY h:mm A",
+      "datetimeWithSeconds": "MM/DD/YYYY h:mm:ss A",
+      "dateOnly": "MM/DD/YYYY",
+      "timeOnly": "h:mm A"
+    },
+    "number": {
+      "decimal": ".",
+      "thousands": ",",
+      "grouping": [3]
+    }
+  },
+  "common": {
+    "add": "Add",
+    "and": "and",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "close": "Close",
+    "conceptSet": "Concept Set",
+    "days": "days",
+    "daysAbbr": "d",
+    "delete": "Delete",
+    "loading": "Loading",
+    "loadingWithDots": "Loading...",
+    "noData": "No data",
+    "remove": "Remove",
+    "save": "Save",
+    "select": "Select"
+  },
+  "options": {
+    "all": "all",
+    "any": "any",
+    "atLeast": "At least",
+    "atMost": "At most",
+    "exactly": "Exactly"
+  },
+  "components": {
+    "conceptAddBox": {
+      "selectConceptSet": "Select Concept Set",
+      "exclude": "Exclude"
+    },
+    "conceptSetBuilder": {
+      "conceptSet": "Concept Set",
+      "selectConceptSet": "Select Concept Set...",
+      "unnamedConceptSet": "Unnamed Concept Set"
+    },
+    "attributesEditor": {
+      "enterTextValue": "Enter text value...",
+      "edit": "Edit",
+      "addDateAdjustment": "Add Date Adjustment",
+      "removeAttribute": "Remove attribute",
+      "pleaseEnterTextValue": "Please enter a text value",
+      "pleaseEnterNumericValue": "Please enter a numeric value",
+      "betweenRequiresBothValues": "BETWEEN operator requires both values",
+      "notConfigured": "Not configured",
+      "bothDatesRequired": "Both start and end dates are required",
+      "endDateAfterStart": "End date must be after start date"
+    },
+    "criteriaGroup": {
+      "addAdditionalConstraint": "add additional constraint",
+      "addCriteria": "Add criteria to group...",
+      "addNestedGroup": "Add Nested Group",
+      "and": "and",
+      "between": "between",
+      "criteriaGroupText_1": "restrict to the same visit occurrence",
+      "criteriaGroupText_2": "allow events from outside observation period",
+      "deleteCriteria": "Delete Criteria",
+      "deleteGroup": "Delete Group",
+      "removeNestedGroup": "Remove Nested Group",
+      "followingCriteria": "of the following criteria:",
+      "having": "having",
+      "havingCapital": "Having",
+      "occurrencesOf": "occurrences of:",
+      "occurrenceOf": "occurrence of:",
+      "usingAll": "using all",
+      "usingDistinct": "using distinct",
+      "where": "where",
+      "with": "with",
+      "withFollowingCriteria": "with the following event criteria:",
+      "occurringWithinTheSameVisit": "occurring within the same visit",
+      "nestedCriteria": {
+        "title": "Nested Criteria",
+        "addCriteria": "Add Criteria",
+        "logicTypes": {
+          "all": "ALL of the following",
+          "any": "ANY of the following",
+          "atLeast": "At least {count}",
+          "atMost": "At most {count}"
+        },
+        "selectLogicType": "Select logic type",
+        "selectCount": "Select count",
+        "maxDepthWarning": "Maximum nesting depth (10 levels) reached",
+        "depthWarning": "Nesting depth is {depth}/10",
+        "removeGroup": "Remove Nested Group",
+        "confirmRemove": "Are you sure you want to remove this nested group and all its criteria?"
+      },
+      "clickToChangeMatchType": "Click to change match type",
+      "removeGroup": "Remove group",
+      "noEventsInGroup": "No events in group. Add events to build criteria logic."
+    },
+    "cohortExpressionEditor": {
+      "addCensoringEvent": "Add Censoring Event...",
+      "addInitialEvent": "Add Initial Event...",
+      "addTrimmingOptions": "add trimming options...",
+      "censoringEvents": "Censoring Events:",
+      "cohortEntryEvents": "Cohort Entry Events",
+      "cohortEntryEventsText_1": "Events are recorded time-stamped observations for the persons, such as drug exposures, conditions, procedures, measurements and visits. All events have a start date and end date, though some events may have a start date and end date with the same value (such as procedures or measurements).",
+      "cohortEntryEventsText_2": "Events having any of the following criteria:",
+      "cohortEntryEventsText_3": "with continuous observation of at least",
+      "cohortEntryEventsText_4": "days before and",
+      "cohortEntryEventsText_5": "days after event index date",
+      "cohortEntryEventsText_6": "Limit initial events to:",
+      "cohortEntryEventsText_7": "per person.",
+      "continuousObservationLabel": "Continuous observation",
+      "continuousObservationTitle": "Continuous observation window",
+      "continuousObservationBefore": "Days before",
+      "continuousObservationAfter": "Days after",
+      "continuousObservationHelp": "People without this much continuous observation around the index date are excluded from the cohort.",
+      "entryEventsAnyHint": "Entry events are matched with ANY (or)",
+      "cohortErasText_1": "Specify era collapse gap size:",
+      "cohortErasText_2": "Left censor cohort start dates to",
+      "cohortErasText_2_1": " ",
+      "cohortErasText_3": "Right censor cohort end dates to",
+      "cohortErasText_3_1": " ",
+      "cohortErasTitle": "Cohort Eras",
+      "cohortExit": "Cohort Exit",
+      "cohortExitText_1": "For all qualifying events, there must be a specification of when each event ends presence in the cohort. By default, an event ends at the end of the observation period containing the qualifying initial event, but event end dates may be also be specified:",
+      "cohortExitText_2": "The qualifying initial event can be set to end after a fixed time period relative to the event start or end date, or the end date can be based on the end of a continuous exposure to a set of drugs identified by a concept set.",
+      "cohortExitText_3": "Criteria can be used to signal the end of an event. If a censoring event is identified between a qualifying event's start and end date, the date of the censoring event will be used as the exit date.",
+      "cohortExitText_4": "Exit Cohort based on the following criteria:",
+      "cohortExitText_5": "No censoring events selected.",
+      "cohortExitTitle": "Cohort Exit",
+      "cohortExitTitle_1": "Event End Dates",
+      "cohortExitTitle_2": "Censoring Events",
+      "copyOf": "Copy of: ",
+      "days": "days",
+      "deleteCriteria": "Delete Criteria",
+      "eventPersistence": "Event Persistence:",
+      "inclusionCriteria": "Inclusion Criteria",
+      "inclusionCriteriaText": "The qualifying cohort will be defined as all persons who have an initial event, satisfy the initial event inclusion criteria, and fulfill all additional qualifying inclusion criteria. Each qualifying inclusion criteria will be evaluated to determine the impact of the criteria on the attrition of persons from the initial cohort.",
+      "inclusionCriteriaText_1": "Limit qualifying events to:",
+      "inclusionCriteriaTitle": "Inclusion Criteria",
+      "indexMessage": "The index date refers to the event from the Cohort Entry criteria.",
+      "newInclusionCriteria": "New inclusion criteria",
+      "noCensoring": "No Censoring",
+      "removeRestriction": "Remove initial event restriction",
+      "restrictInitialEventsButton": "Restrict initial events",
+      "restrictInitialEventsTitle": "Restrict intial events to:",
+      "unnamedCriteria": "Unnamed Criteria"
+    },
+    "nestedCriteriaRenderer": {
+      "deepNesting": "Deep nesting detected ({depth} levels). Consider simplifying your criteria structure.",
+      "noConceptSet": "No concept set"
+    },
+    "conditionOccurrence": {
+      "addAttribute": "Add attribute...",
+      "anyCondition": "Any Condition",
+      "conditionOccurrenceText_1": "a condition occurrence of",
+      "conditionOccurrenceText_10": "with a Visit occurrence of:",
+      "conditionOccurrenceText_11": "gender is any of:",
+      "conditionOccurrenceText_12": "provider specialty is any of:",
+      "conditionOccurrenceText_13": "visit occurrence is any of:",
+      "conditionOccurrenceText_2": "for the first time in the person's history",
+      "conditionOccurrenceText_3": "occurrence start is:",
+      "conditionOccurrenceText_4": "occurrence end is:",
+      "conditionOccurrenceText_5": "with a Stop Reason",
+      "conditionOccurrenceText_6": "Condition Source Concept is",
+      "conditionOccurrenceText_7": "with age",
+      "conditionOccurrenceText_8": "with a gender of:",
+      "conditionOccurrenceText_9": "with a Provider Specialty of:",
+      "conditionType": "Condition Type",
+      "indexDataText": "The index date refers to the condition occurrence of <%= conceptSetName %>."
+    },
+    "conditionEra": {
+      "addAttribute": "Add attribute...",
+      "anyConditionButton": "Any Condition",
+      "attributeText_1": "for the first time in the person's history",
+      "attributeText_2": "era start is:",
+      "attributeText_3": "era end is:",
+      "attributeText_4": "with occurrence count",
+      "attributeText_5": "with era length",
+      "attributeText_6": "with age in years at era start",
+      "attributeText_7": "with age in years at era end",
+      "attributeText_8": "with a gender of:",
+      "attributeText_9": "days",
+      "criteriaText_1": "a condition era of",
+      "returnText_1": "The index date refers to the condition era of"
+    },
+    "conditionDrugExposure": {
+      "addAttribute": "Add attribute...",
+      "anyDrug": "Any Drug",
+      "conditionDrugExposureText_1": "a drug exposure of",
+      "conditionDrugExposureText_10": "with Effective Drug Dose",
+      "conditionDrugExposureText_11": "Dose Unit is:",
+      "conditionDrugExposureText_12": "with a Lot Number",
+      "conditionDrugExposureText_13": "Drug Source Concept is:",
+      "conditionDrugExposureText_14": "with age",
+      "conditionDrugExposureText_15": "with a gender of:",
+      "conditionDrugExposureText_16": "with a Provider Specialty of:",
+      "conditionDrugExposureText_17": "with a Visit occurrence of:",
+      "conditionDrugExposureText_18": "route concept is any of:",
+      "conditionDrugExposureText_19": "dose unit is any of:",
+      "conditionDrugExposureText_2": "for the first time in the person's history",
+      "conditionDrugExposureText_20": "gender is any of:",
+      "conditionDrugExposureText_21": "provider specialty is any of:",
+      "conditionDrugExposureText_22": "visit occurrence is any of:",
+      "conditionDrugExposureText_3": "occurrence start is:",
+      "conditionDrugExposureText_4": "occurrence end is:",
+      "conditionDrugExposureText_5": "with a Stop Reason",
+      "conditionDrugExposureText_6": "with Refills",
+      "conditionDrugExposureText_7": "with Quantity",
+      "conditionDrugExposureText_8": "with Days Supply",
+      "conditionDrugExposureText_9": "Route Concept is:",
+      "drugType": "Drug Type",
+      "indexDataText": "The index date refers to the drug exposure of <%= conceptSetName %>."
+    },
+    "eventCard": {
+      "concepts": "concepts",
+      "noConceptSet": "No concept set",
+      "collapse": "Collapse",
+      "expand": "Expand",
+      "removeEvent": "Remove event",
+      "attributes": "attributes",
+      "attribute": "attribute",
+      "addCardinality": "Add Cardinality",
+      "addTemporalWindow": "Add Temporal Window",
+      "addAttributes": "Add Attributes",
+      "removeCardinality": "Remove cardinality",
+      "temporalWindows": "Temporal Windows",
+      "removeTemporalWindow": "Remove temporal window",
+      "addEndWindow": "Add End-Date Constraint",
+      "removeEndWindow": "Remove end-date constraint",
+      "endWindowLabel": "End window",
+      "eventIdLabel": "Event ID:",
+      "criteriaTypeLabel": "Criteria Type:",
+      "conceptSetIdLabel": "Concept Set ID:",
+      "restrictVisitNote": "Event must occur in same visit as index",
+      "ignoreObservationNote": "Event can occur outside observation period",
+      "sourceConceptLabel": "Source concept",
+      "selectSourceConcept": "Select Source Concept",
+      "typeExcludeLabel": "Exclude concept type (is not any of)"
+    }
+  },
+  "criteria": {
+    "conditionEra": {
+      "name": "Condition Era",
+      "description": {
+        "initial": "Find patients with specific diagnosis era.",
+        "censoring": "Exit cohort based on diagnosis era.",
+        "group": "Find patients with specific condition era."
+      }
+    },
+    "conditionOccurrence": {
+      "name": "Condition Occurrence",
+      "description": {
+        "initial": "Find patients with specific diagnoses.",
+        "censoring": "Exit cohort based on diagnoses.",
+        "group": "Find patients with specific conditions."
+      }
+    },
+    "drugExposure": {
+      "name": "Drug Exposure",
+      "description": {
+        "all": "Find patients with exposure to specific drugs or drug classes."
+      }
+    }
+  }
+}

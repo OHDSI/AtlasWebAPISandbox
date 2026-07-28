@@ -8,6 +8,7 @@ export type CriteriaFieldKind =
   | 'dateRange'
   | 'dateAdjustment'
   | 'textFilter'
+  | 'period'
   | 'criteriaGroup'
 
 export interface CriteriaFieldSpec {
@@ -30,6 +31,7 @@ export interface ConceptArrayBinding {
 export interface CriteriaAttributeSpec {
   key: string
   label: string
+  description?: string
   kind?: CriteriaFieldKind
   componentProps?: () => Record<string, any>
   init: () => void

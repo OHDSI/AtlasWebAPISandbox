@@ -7,7 +7,9 @@
 
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
+import { computed, ref } from 'vue'
 import type { ZodSchema } from 'zod'
+import type { Locale, LocaleCode, LocaleFormat, TranslationParams, UseI18nReturn } from '@/types/i18n'
 
 /**
  * Load a JSON file from the test resources directory
@@ -101,4 +103,43 @@ export function loadAndValidateResource<T>(
 ) {
   const json = loadJsonResource(filename, options?.baseDir)
   return validateJson<T>(json, schema)
+}
+
+export function createI18nKeyOnlyMock(locale: LocaleCode = 'en'): UseI18nReturn {
+  const currentLocale = ref<LocaleCode>(locale)
+  const loadingRef = ref(false)
+  const errorRef = ref<string | null>(null)
+
+  function getKeyOnlyTranslation(key: string): string {
+    return `i18n:${key}`
+  }
+
+  const format = computed((): LocaleFormat | undefined => ({
+    date: {
+      datetime: 'MM/DD/YYYY HH:mm',
+      datetimeWithSeconds: 'MM/DD/YYYY HH:mm:ss',
+      dateOnly: 'MM/DD/YYYY',
+      timeOnly: 'HH:mm',
+    },
+    number: { decimal: '.', thousands: ',', grouping: [3] },
+  }))
+
+  return {
+    t: (key: string, _defaultValueOrParams?: string | TranslationParams, _params?: TranslationParams) =>
+      computed(() => getKeyOnlyTranslation(key)),
+    tv: (key: string, _defaultValueOrParams?: string | TranslationParams, _params?: TranslationParams) =>
+      getKeyOnlyTranslation(key),
+    locale: computed(() => currentLocale.value),
+    availableLocales: computed((): Locale[] => [{ code: 'en', name: 'English' }]),
+    changeLocale: async (newLocale: LocaleCode): Promise<void> => {
+      currentLocale.value = newLocale
+    },
+    loading: computed(() => loadingRef.value),
+    error: computed(() => errorRef.value),
+    format,
+  }
+}
+
+export const mockUseI18nKeyOnly = {
+  useI18n: () => createI18nKeyOnlyMock(),
 }

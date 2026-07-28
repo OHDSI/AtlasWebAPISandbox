@@ -8,14 +8,14 @@
       <div class="section-wrapper section-wrapper--step">
         <div class="section-header">
           <h3 class="section-title">
-            Cohort Entry Events
+            {{ cohortEntryEventsLabel }}
           </h3>
           <span class="section-state-chip section-state-chip--primary">
             {{ entryEventsState }}
           </span>
           <div class="section-controls">
             <div class="section-controls__label">
-              Cohort Entry On
+              {{ cohortEntryOnLabel }}
             </div>
 
             <v-btn-toggle
@@ -26,13 +26,13 @@
               divided
             >
               <v-btn value="First">
-                Earliest
+                {{ earliestLabel }}
               </v-btn>
               <v-btn value="All">
-                All
+                {{ allLabel }}
               </v-btn>
               <v-btn value="Last">
-                Latest
+                {{ latestLabel }}
               </v-btn>
             </v-btn-toggle>
           </div>
@@ -44,9 +44,9 @@
               class="entry-any-label"
               data-testid="entry-any-label"
               aria-disabled="true"
-              title="Entry events are matched with ANY (or)"
+              :title="entryEventsAnyHintLabel"
             >
-              <span class="entry-any-label__text">any</span>
+              <span class="entry-any-label__text">{{ anyLabel }}</span>
             </div>
 
             <div class="events-container__body">
@@ -59,7 +59,7 @@
                       size="small"
                       prepend-icon="mdi-plus"
                     >
-                      Add Criteria to Group
+                      {{ addCriteriaLabel }}
                     </v-btn>
                   </template>
 
@@ -95,7 +95,7 @@
                         mdi-clock-outline
                       </v-icon>
                       <span class="d-none d-md-inline">
-                        Continuous observation: {{ observationPriorDays }}d before · {{ observationPostDays }}d after
+                        {{ continuousObservationLabel }}: {{ observationPriorDays }}d {{ t('options.before', 'before').value }} · {{ observationPostDays }}d {{ t('options.after', 'after').value }}
                       </span>
                       <span class="d-md-none">
                         {{ observationPriorDays }}d / {{ observationPostDays }}d
@@ -108,7 +108,7 @@
                     rounded="lg"
                   >
                     <v-card-title class="text-subtitle-2">
-                      Continuous observation
+                      {{ continuousObservationLabel }}
                     </v-card-title>
                     <v-card-text class="obs-period-popover__fields">
                       <v-text-field
@@ -118,7 +118,7 @@
                         density="compact"
                         hide-details
                         min="0"
-                        label="Days before"
+                        :label="daysBeforeLabel"
                       />
                       <v-text-field
                         v-model="observationPostDays"
@@ -127,7 +127,7 @@
                         density="compact"
                         hide-details
                         min="0"
-                        label="Days after"
+                        :label="daysAfterLabel"
                       />
                     </v-card-text>
                   </v-card>
@@ -142,7 +142,7 @@
                   density="compact"
                   class="mb-3"
                 >
-                  No primary criteria yet. Click "Add Criteria to Group" to start.
+                  {{ noPrimaryCriteriaLabel }}
                 </v-alert>
 
                 <CriteriaRenderer
@@ -164,10 +164,10 @@
                     prepend-icon="mdi-filter-plus"
                     @click="addAdditionalCriteria"
                   >
-                    Restrict Initial Events
+                    {{ restrictInitialEventsLabel }}
                   </v-btn>
 
-                  <CriteriaGroupEditor
+                  <CriteriaGroup
                     v-else
                     :group="expression.AdditionalCriteria"
                     :concept-sets="conceptSets"
@@ -192,17 +192,17 @@
       <div class="section-wrapper section-wrapper--step">
         <div class="section-header">
           <h3 class="section-title">
-            Inclusion Criteria
+            {{ inclusionCriteriaLabel }}
           </h3>
           <span class="section-state-chip section-state-chip--muted">
-            Mocked for now
+            {{ mockedForNowLabel }}
           </span>
         </div>
         <v-alert
           variant="tonal"
           density="compact"
         >
-          This section will follow the Atlas3 inclusion-criteria shell.
+          {{ inclusionShellLabel }}
         </v-alert>
       </div>
     </section>
@@ -215,17 +215,17 @@
       <div class="section-wrapper section-wrapper--step">
         <div class="section-header">
           <h3 class="section-title">
-            Exit &amp; Eras
+            {{ exitCriteriaLabel }}
           </h3>
           <span class="section-state-chip section-state-chip--muted">
-            Mocked for now
+            {{ mockedForNowLabel }}
           </span>
         </div>
         <v-alert
           variant="tonal"
           density="compact"
         >
-          This section will mirror Atlas3 exit criteria and censor window controls.
+          {{ exitShellLabel }}
         </v-alert>
       </div>
     </section>
@@ -234,9 +234,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import CriteriaRenderer from './criteria/CriteriaRenderer.vue'
-import CriteriaGroupEditor from './criteria/CriteriaGroupEditor.vue'
-import type { CohortExpression, Criteria, CriteriaGroup } from './circe.types'
+import CriteriaGroup from './criteria/CriteriaGroup.vue'
+import type { CohortExpression, Criteria, CriteriaGroup as CriteriaGroupType } from './circe.types'
 import type { ConceptSetOption, ConceptSetSelectionTarget } from './criteria/criteria-editor.types'
 
 type PrimaryCriteriaLimitType = 'First' | 'All' | 'Last'
@@ -252,14 +253,42 @@ const emit = defineEmits<{
   'clear-concept-set': []
 }>()
 
+const { t } = useI18n()
+
+const cohortEntryEventsLabel = computed(() => t('components.cohortExpressionEditor.entryEvents', 'Cohort Entry Events').value)
+const cohortEntryOnLabel = computed(() => t('components.cohortExpressionEditor.entryOn', 'Cohort Entry On').value)
+const earliestLabel = computed(() => t('options.earliest', 'Earliest').value)
+const allLabel = computed(() => t('options.all', 'All').value)
+const latestLabel = computed(() => t('options.latest', 'Latest').value)
+const anyLabel = computed(() => t('options.any', 'any').value)
+const entryEventsAnyHintLabel = computed(() => t('components.cohortExpressionEditor.entryEventsAnyHint', 'Entry events are matched with ANY (or)').value)
+const addCriteriaLabel = computed(() => t('components.cohortExpressionEditor.addCriteriaToGroup', 'Add Criteria to Group').value)
+const continuousObservationLabel = computed(() => t('components.cohortExpressionEditor.continuousObservation', 'Continuous observation').value)
+const daysBeforeLabel = computed(() => t('components.cohortExpressionEditor.daysBefore', 'Days before').value)
+const daysAfterLabel = computed(() => t('components.cohortExpressionEditor.daysAfter', 'Days after').value)
+const noPrimaryCriteriaLabel = computed(() => t('components.cohortExpressionEditor.noPrimaryCriteria', 'No primary criteria yet. Click "Add Criteria to Group" to start.').value)
+const restrictInitialEventsLabel = computed(() => t('components.cohortExpressionEditor.restrictInitialEvents', 'Restrict Initial Events').value)
+const inclusionCriteriaLabel = computed(() => t('components.cohortExpressionEditor.inclusionCriteria', 'Inclusion Criteria').value)
+const mockedForNowLabel = computed(() => t('components.cohortExpressionEditor.mockedForNow', 'Mocked for now').value)
+const inclusionShellLabel = computed(() => t('components.cohortExpressionEditor.inclusionShell', 'This section will follow the Atlas3 inclusion-criteria shell.').value)
+const exitCriteriaLabel = computed(() => t('components.cohortExpressionEditor.exitCriteria', 'Exit & Eras').value)
+const exitShellLabel = computed(() => t('components.cohortExpressionEditor.exitShell', 'This section will mirror Atlas3 exit criteria and censor window controls.').value)
+
 const criteriaTypes = [
   'ConditionOccurrence',
   'ConditionEra',
   'DrugExposure',
+  'DoseEra',
+  'DeviceExposure',
   'DrugEra',
   'Measurement',
   'Observation',
+  'ObservationPeriod',
+  'PayerPlanPeriod',
   'ProcedureOccurrence',
+  'Specimen',
+  'VisitDetail',
+  'VisitOccurrence',
   'Death',
 ]
 
@@ -322,6 +351,12 @@ function addPrimaryCriteria(type: string) {
     case 'DrugExposure':
       criteria = { DrugExposure: {} }
       break
+    case 'DoseEra':
+      criteria = { DoseEra: {} }
+      break
+    case 'DeviceExposure':
+      criteria = { DeviceExposure: {} }
+      break
     case 'DrugEra':
       criteria = { DrugEra: {} }
       break
@@ -331,8 +366,23 @@ function addPrimaryCriteria(type: string) {
     case 'Observation':
       criteria = { Observation: {} }
       break
+    case 'ObservationPeriod':
+      criteria = { ObservationPeriod: {} }
+      break
+    case 'PayerPlanPeriod':
+      criteria = { PayerPlanPeriod: {} }
+      break
     case 'ProcedureOccurrence':
       criteria = { ProcedureOccurrence: {} }
+      break
+    case 'Specimen':
+      criteria = { Specimen: {} }
+      break
+    case 'VisitDetail':
+      criteria = { VisitDetail: {} }
+      break
+    case 'VisitOccurrence':
+      criteria = { VisitOccurrence: {} }
       break
     case 'Death':
       criteria = { Death: {} }
@@ -348,7 +398,7 @@ function addPrimaryCriteria(type: string) {
   criteriaList.push(criteria)
 }
 
-function createEmptyCriteriaGroup(): CriteriaGroup {
+function createEmptyCriteriaGroup(): CriteriaGroupType {
   return {
     Type: 'ALL',
     CriteriaList: [],
@@ -371,7 +421,7 @@ function removePrimaryCriteria(criteriaToRemove: Criteria) {
 }
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .cohort-builder__steps {
   position: relative;
 }

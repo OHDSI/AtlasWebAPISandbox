@@ -9,7 +9,7 @@
       size="small"
       @click="toggleExclude"
     >
-      {{ modelValue.IsExclusion ? 'not any of' : 'any of' }}
+      {{ modelValue.IsExclusion ? notAnyOfLabel : anyOfLabel }}
     </v-chip>
 
     <EventConceptSet
@@ -28,10 +28,13 @@
 </template>
 
 <script setup lang="ts">
-import { toRefs } from 'vue'
+import { computed, toRefs } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import EventConceptSet from './EventConceptSet.vue'
 import type { ConceptSetOption, ConceptSetSelectionTarget } from '../criteria/criteria-editor.types'
 import type { ConceptSetSelection } from '../circe.types'
+
+const { t } = useI18n()
 
 const props = withDefaults(
   defineProps<{
@@ -59,6 +62,9 @@ const emit = defineEmits<{
 }>()
 
 const { modelValue, conceptSets, label, selectLabel, compact, pickerTestId, chipTestId } = toRefs(props)
+
+const anyOfLabel = computed(() => t('components.conceptAddBox.anyOf', 'any of').value)
+const notAnyOfLabel = computed(() => t('components.conceptAddBox.notAnyOf', 'not any of').value)
 
 function toggleExclude() {
   if (modelValue.value.IsExclusion === undefined) return

@@ -18,7 +18,7 @@
             <div
               class="vertical-label occurrence-label"
               :data-type="occurrenceTypeKey"
-              :title="'Click to change occurrence mode'"
+              :title="occurrenceChangeLabel"
             >
               {{ occurrenceLabel }}
             </div>
@@ -34,7 +34,7 @@
                 size="small"
                 @click="occurrenceTypeKey = 'EXACTLY'"
               >
-                Exactly
+                {{ exactLabel }}
               </v-btn>
               <v-btn
                 :variant="occurrenceTypeKey === 'AT_LEAST' ? 'tonal' : 'outlined'"
@@ -42,7 +42,7 @@
                 size="small"
                 @click="occurrenceTypeKey = 'AT_LEAST'"
               >
-                At least
+                {{ atLeastLabel }}
               </v-btn>
               <v-btn
                 :variant="occurrenceTypeKey === 'AT_MOST' ? 'tonal' : 'outlined'"
@@ -50,7 +50,7 @@
                 size="small"
                 @click="occurrenceTypeKey = 'AT_MOST'"
               >
-                At most
+                {{ atMostLabel }}
               </v-btn>
             </div>
 
@@ -59,7 +59,7 @@
               class="mt-3"
               density="compact"
               hide-details
-              label="Count"
+              :label="countLabel"
               min="0"
               type="number"
             />
@@ -104,21 +104,21 @@
                 :items="windowPresetOptions"
                 item-title="label"
                 item-value="label"
-                label="Quick Presets"
+                :label="quickPresetsLabel"
                 variant="outlined"
                 density="compact"
                 hide-details
                 @update:model-value="applyWindowPresetByLabel"
               />
 
-              <WindowEditor :window="ensureStartWindow()" />
+              <Window :window="ensureStartWindow()" />
 
               <template v-if="props.criteria.EndWindow">
                 <div class="corelated-criteria-editor__window-separator">
-                  and
+                  {{ t('common.and', 'and').value }}
                 </div>
 
-                <WindowEditor :window="props.criteria.EndWindow">
+                <Window :window="props.criteria.EndWindow">
                   <template #actions>
                     <v-btn
                       icon="mdi-delete"
@@ -128,7 +128,7 @@
                       @click="removeEndWindow"
                     />
                   </template>
-                </WindowEditor>
+                </Window>
               </template>
             </v-card-text>
 
@@ -138,7 +138,7 @@
                 variant="tonal"
                 @click="ensureEndWindow()"
               >
-                Add Additional Time-Box
+                {{ addTimeBoxLabel }}
               </v-btn>
 
               <v-spacer />
@@ -147,7 +147,7 @@
                 variant="text"
                 @click="showWindowMenu = false"
               >
-                Close
+                {{ closeLabel }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -160,7 +160,7 @@
             :color="restrictVisit ? 'success' : 'primary'"
             @click="restrictVisit = !restrictVisit"
           >
-            Restrict Visit
+            {{ restrictVisitLabel }}
           </v-chip>
 
           <v-chip
@@ -168,7 +168,7 @@
             :color="ignoreObservationPeriod ? 'success' : 'primary'"
             @click="ignoreObservationPeriod = !ignoreObservationPeriod"
           >
-            Ignore Observation Period
+            {{ ignoreObservationLabel }}
           </v-chip>
         </div>
       </div>
@@ -179,13 +179,14 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import CriteriaRenderer from './CriteriaRenderer.vue'
-import WindowEditor from './WindowEditor.vue'
+import Window from './Window.vue'
 import type { CorelatedCriteria, Criteria } from '../circe.types'
 import type { ConceptSetOption, ConceptSetSelectionTarget } from './criteria-editor.types'
 import { createDefaultWindow, formatWindowExpression, getWindowPresetOptions, cloneWindow, type WindowPresetValue } from './window-utils'
 
-defineOptions({ name: 'CorelatedCriteriaEditor' })
+defineOptions({ name: 'CorelatedCriteria' })
 
 const props = defineProps<{
   criteria: CorelatedCriteria
@@ -198,6 +199,8 @@ const emit = defineEmits<{
   'edit-concept-set': [target: ConceptSetSelectionTarget | undefined]
   'clear-concept-set': []
 }>()
+
+const { t } = useI18n()
 
 const showOccurrenceMenu = ref(false)
 const showWindowMenu = ref(false)
@@ -227,15 +230,32 @@ const occurrenceCount = computed<string>({
 })
 
 const occurrenceLabel = computed(() => {
-  return `${occurrenceTypeKey.value.replace('_', ' ')} ${occurrenceCount.value}`
+  const labelByType = {
+    EXACTLY: t('options.exactly', 'Exactly').value,
+    AT_LEAST: t('options.atLeast', 'At least').value,
+    AT_MOST: t('options.atMost', 'At most').value,
+  }
+
+  return `${labelByType[occurrenceTypeKey.value]} ${occurrenceCount.value}`
 })
 
 const windowSummaryLabel = computed(() => {
   const startSummary = formatWindowExpression(props.criteria.StartWindow)
   const endSummary = props.criteria.EndWindow ? formatWindowExpression(props.criteria.EndWindow) : ''
 
-  return endSummary ? `${startSummary} and ${endSummary}` : startSummary
+  return endSummary ? `${startSummary} ${t('common.and', 'and').value} ${endSummary}` : startSummary
 })
+
+const occurrenceChangeLabel = computed(() => t('components.criteriaGroup.nestedCriteria.selectLogicType', 'Select occurrence mode').value)
+const countLabel = computed(() => t('columns.count', 'Count').value)
+const quickPresetsLabel = computed(() => t('common.presets', 'Quick Presets').value)
+const addTimeBoxLabel = computed(() => t('components.eventCard.addTemporalWindow', 'Add Temporal Window').value)
+const closeLabel = computed(() => t('common.close', 'Close').value)
+const restrictVisitLabel = computed(() => t('components.criteriaGroup.criteriaGroupText_1', 'restrict to the same visit occurrence').value)
+const ignoreObservationLabel = computed(() => t('components.criteriaGroup.criteriaGroupText_2', 'allow events from outside observation period').value)
+const exactLabel = computed(() => t('options.exactly', 'Exactly').value)
+const atLeastLabel = computed(() => t('options.atLeast', 'At least').value)
+const atMostLabel = computed(() => t('options.atMost', 'At most').value)
 
 const restrictVisit = computed({
   get: () => props.criteria.RestrictVisit ?? false,

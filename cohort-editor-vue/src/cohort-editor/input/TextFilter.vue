@@ -24,20 +24,23 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from '@/composables/useI18n'
 import type { TextFilter, TextFilterOp } from '../circe.types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue?: TextFilter
 }>()
 
-const operators = [
-  { title: 'ends with', value: 'endsWith' },
-  { title: 'starts with', value: 'startsWith' },
-  { title: 'contains', value: 'contains' },
-  { title: 'not ends with', value: '!endsWith' },
-  { title: 'not starts with', value: '!startsWith' },
-  { title: 'not contains', value: '!contains' },
-]
+const operators = computed(() => [
+  { title: t('options.endsWith', 'ends with').value, value: 'endsWith' },
+  { title: t('options.startsWith', 'starts with').value, value: 'startsWith' },
+  { title: t('options.contains', 'contains').value, value: 'contains' },
+  { title: t('options.notEndsWith', 'not ends with').value, value: '!endsWith' },
+  { title: t('options.notStartsWith', 'not starts with').value, value: '!startsWith' },
+  { title: t('options.notContains', 'not contains').value, value: '!contains' },
+])
 
 const activeValue = computed(() => props.modelValue)
 
