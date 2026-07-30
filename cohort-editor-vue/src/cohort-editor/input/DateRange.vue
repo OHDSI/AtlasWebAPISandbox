@@ -2,49 +2,49 @@
   <div class="date-range d-flex align-center ga-2 flex-nowrap">
     <v-select
       class="date-range__operator"
-      :model-value="activeValue?.Op"
+      v-model="operator"
       :items="operators"
       item-title="title"
       item-value="value"
       variant="outlined"
       density="compact"
       hide-details
-      @update:model-value="(value) => setOp(value as DateRangeOp)"
     />
     <v-text-field
       class="date-range__value"
-      :model-value="activeValue?.Value"
+      v-model="value"
       type="date"
       variant="outlined"
       density="compact"
       hide-details
-      @update:model-value="(value) => setValue(value)"
     />
-    <template v-if="activeValue?.Op === 'bt' || activeValue?.Op === '!bt'">
+    <template v-if="operator === 'bt' || operator === '!bt'">
       <span class="date-range__and text-medium-emphasis">{{ andLabel }}</span>
       <v-text-field
         class="date-range__extent"
-        :model-value="activeValue?.Extent"
+        v-model="extent"
         type="date"
         variant="outlined"
         density="compact"
         hide-details
-        @update:model-value="(value) => setExtent(value)"
       />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, toRef } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import type { DateRange, DateRangeOp } from '../circe.types'
+import { optionalTextBinding } from './bindings'
 
 const { t } = useI18n()
 
 const props = defineProps<{
-  modelValue?: DateRange
+  modelValue: DateRange
 }>()
+
+const modelValue = toRef(props, 'modelValue')
 
 const operators = computed(() => [
   { title: t('options.before', 'before').value, value: 'lt' },
@@ -59,22 +59,15 @@ const operators = computed(() => [
 
 const andLabel = computed(() => t('common.and', 'and').value)
 
-const activeValue = computed(() => props.modelValue)
+const operator = computed<DateRangeOp | undefined>({
+  get: () => modelValue.value.Op,
+  set: value => {
+    modelValue.value.Op = value
+  },
+})
 
-function setOp(op: DateRangeOp) {
-  if (!props.modelValue) return
-  props.modelValue.Op = op
-}
-
-function setValue(value: unknown) {
-  if (!props.modelValue) return
-  props.modelValue.Value = value === '' || value === null || value === undefined ? undefined : String(value)
-}
-
-function setExtent(value: unknown) {
-  if (!props.modelValue) return
-  props.modelValue.Extent = value === '' || value === null || value === undefined ? undefined : String(value)
-}
+const value = optionalTextBinding(modelValue, 'Value')
+const extent = optionalTextBinding(modelValue, 'Extent')
 </script>
 
 <style scoped>

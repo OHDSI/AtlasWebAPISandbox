@@ -2,47 +2,47 @@
   <div class="numeric-range d-flex align-center ga-2 flex-nowrap">
     <v-select
       class="numeric-range__operator"
-      :model-value="activeValue?.Op ?? defaultOperator"
+      v-model="operator"
       :items="operators"
       item-title="title"
       item-value="value"
       variant="outlined"
       density="compact"
       hide-details
-      @update:model-value="(value) => setOp(value as NumericRangeOp)"
     />
     <v-text-field
       class="numeric-range__value"
-      :model-value="activeValue?.Value"
+      v-model="value"
       type="number"
       variant="outlined"
       density="compact"
       hide-details
-      @update:model-value="(value) => setValue(value)"
     />
     <v-text-field
-      v-if="activeValue?.Op === 'bt' || activeValue?.Op === '!bt'"
+      v-if="operator === 'bt' || operator === '!bt'"
       class="numeric-range__extent"
-      :model-value="activeValue?.Extent"
+      v-model="extent"
       type="number"
       variant="outlined"
       density="compact"
       hide-details
-      @update:model-value="(value) => setExtent(value)"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, toRef } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import type { NumericRange, NumericRangeOp } from '../circe.types'
+import { optionalNumberBinding } from './bindings'
 
 const { t } = useI18n()
 
 const props = defineProps<{
-  modelValue?: NumericRange
+  modelValue: NumericRange
 }>()
+
+const modelValue = toRef(props, 'modelValue')
 
 const operators = computed(() => [
   { title: t('options.lessThan', 'less than').value, value: 'lt' },
@@ -56,22 +56,15 @@ const operators = computed(() => [
 ])
 const defaultOperator = 'gte'
 
-const activeValue = computed(() => props.modelValue)
+const operator = computed<NumericRangeOp>({
+  get: () => modelValue.value.Op ?? defaultOperator,
+  set: value => {
+    modelValue.value.Op = value
+  },
+})
 
-function setOp(op: NumericRangeOp) {
-  if (!props.modelValue) return
-  props.modelValue.Op = op
-}
-
-function setValue(value: unknown) {
-  if (!props.modelValue) return
-  props.modelValue.Value = value === '' || value === null || value === undefined ? undefined : Number(value)
-}
-
-function setExtent(value: unknown) {
-  if (!props.modelValue) return
-  props.modelValue.Extent = value === '' || value === null || value === undefined ? undefined : Number(value)
-}
+const value = optionalNumberBinding(modelValue, 'Value')
+const extent = optionalNumberBinding(modelValue, 'Extent')
 </script>
 
 <style scoped>

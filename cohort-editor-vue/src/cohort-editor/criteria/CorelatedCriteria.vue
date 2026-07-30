@@ -63,6 +63,31 @@
               min="0"
               type="number"
             />
+
+            <div class="corelated-criteria-editor__distinct mt-3">
+              <v-chip
+                class="corelated-criteria-editor__distinct-chip"
+                :variant="isDistinct ? 'tonal' : 'outlined'"
+                :color="isDistinct ? 'success' : 'primary'"
+                prepend-icon="mdi-filter-variant"
+                @click="toggleDistinct"
+              >
+                {{ distinctLabel }}
+              </v-chip>
+
+              <v-select
+                v-if="isDistinct"
+                v-model="distinctCountColumn"
+                class="mt-3"
+                density="compact"
+                hide-details
+                :items="distinctColumnOptions"
+                item-title="label"
+                item-value="value"
+                :label="distinctByLabel"
+                variant="outlined"
+              />
+            </div>
           </v-card-text>
         </v-card>
       </v-menu>
@@ -182,9 +207,10 @@ import { computed, ref } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import CriteriaRenderer from './CriteriaRenderer.vue'
 import Window from './Window.vue'
-import type { CorelatedCriteria, Criteria } from '../circe.types'
+import type { CorelatedCriteria, Criteria, Occurrence } from '../circe.types'
 import type { ConceptSetOption, ConceptSetSelectionTarget } from './criteria-editor.types'
 import { createDefaultWindow, formatWindowExpression, getWindowPresetOptions, cloneWindow, type WindowPresetValue } from './window-utils'
+import { numberBinding } from '../input/bindings'
 
 defineOptions({ name: 'CorelatedCriteria' })
 
@@ -214,18 +240,33 @@ const innerCriteria = computed<Criteria>(() => {
   return props.criteria.Criteria
 })
 
+const occurrence = computed<Occurrence>(() => ensureOccurrence())
+
 const occurrenceTypeKey = computed<'EXACTLY' | 'AT_LEAST' | 'AT_MOST'>({
-  get: () => occurrenceTypeFromValue(props.criteria.Occurrence?.Type),
+  get: () => occurrenceTypeFromValue(occurrence.value.Type),
   set: value => {
-    ensureOccurrence().Type = occurrenceTypeToValue(value)
+    occurrence.value.Type = occurrenceTypeToValue(value)
   },
 })
 
-const occurrenceCount = computed<string>({
-  get: () => props.criteria.Occurrence?.Count?.toString() ?? '1',
+const occurrenceCount = numberBinding(occurrence, 'Count')
+
+const isDistinct = computed({
+  get: () => occurrence.value.IsDistinct ?? false,
   set: value => {
-    const occurrence = ensureOccurrence()
-    occurrence.Count = value === '' ? undefined : Number(value)
+    occurrence.value.IsDistinct = value
+  },
+})
+
+const distinctCountColumn = computed<Occurrence['CountColumn']>({
+  get: () => occurrence.value.CountColumn,
+  set: value => {
+    if (value === undefined) {
+      delete occurrence.value.CountColumn
+      return
+    }
+
+    occurrence.value.CountColumn = value
   },
 })
 
@@ -236,7 +277,11 @@ const occurrenceLabel = computed(() => {
     AT_MOST: t('options.atMost', 'At most').value,
   }
 
-  return `${labelByType[occurrenceTypeKey.value]} ${occurrenceCount.value}`
+  if (!isDistinct.value) {
+    return `${labelByType[occurrenceTypeKey.value]} ${occurrenceCount.value}`
+  }
+
+  return `${labelByType[occurrenceTypeKey.value]} ${occurrenceCount.value} of distinct ${distinctCountColumnLabel.value}`
 })
 
 const windowSummaryLabel = computed(() => {
@@ -248,6 +293,20 @@ const windowSummaryLabel = computed(() => {
 
 const occurrenceChangeLabel = computed(() => t('components.criteriaGroup.nestedCriteria.selectLogicType', 'Select occurrence mode').value)
 const countLabel = computed(() => t('columns.count', 'Count').value)
+const distinctByLabel = computed(() => 'Distinct by')
+const distinctLabel = computed(() => (isDistinct.value ? 'Using distinct events' : 'Using all events'))
+const distinctCountColumnLabel = computed(() => {
+  switch (distinctCountColumn.value) {
+    case 'START_DATE':
+      return 'Start Date'
+    case 'DOMAIN_CONCEPT':
+      return 'Standard Concept'
+    case 'VISIT_ID':
+      return 'Visit'
+    default:
+      return 'Standard Concept'
+  }
+})
 const quickPresetsLabel = computed(() => t('common.presets', 'Quick Presets').value)
 const addTimeBoxLabel = computed(() => t('components.eventCard.addTemporalWindow', 'Add Temporal Window').value)
 const closeLabel = computed(() => t('common.close', 'Close').value)
@@ -256,6 +315,12 @@ const ignoreObservationLabel = computed(() => t('components.criteriaGroup.criter
 const exactLabel = computed(() => t('options.exactly', 'Exactly').value)
 const atLeastLabel = computed(() => t('options.atLeast', 'At least').value)
 const atMostLabel = computed(() => t('options.atMost', 'At most').value)
+
+const distinctColumnOptions = [
+  { label: 'Start Date', value: 'START_DATE' },
+  { label: 'Standard Concept', value: 'DOMAIN_CONCEPT' },
+  { label: 'Visit', value: 'VISIT_ID' },
+] as const
 
 const restrictVisit = computed({
   get: () => props.criteria.RestrictVisit ?? false,
@@ -276,10 +341,19 @@ function ensureOccurrence() {
     props.criteria.Occurrence = {
       Type: 2,
       Count: 1,
+      IsDistinct: false,
     }
   }
 
   return props.criteria.Occurrence
+}
+
+function toggleDistinct() {
+  isDistinct.value = !isDistinct.value
+
+  if (isDistinct.value && !distinctCountColumn.value) {
+    distinctCountColumn.value = 'DOMAIN_CONCEPT'
+  }
 }
 
 function occurrenceTypeFromValue(value: number | undefined): 'EXACTLY' | 'AT_LEAST' | 'AT_MOST' {

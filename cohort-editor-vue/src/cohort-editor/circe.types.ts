@@ -42,7 +42,24 @@ export const OccurrenceSchema = z.object({
   Type: z.number().optional(), // 0=EXACTLY, 1=AT_MOST, 2=AT_LEAST
   Count: z.number().optional(),
   IsDistinct: z.boolean().optional(),
-  CountColumn: z.string().optional(),
+  CountColumn: z.enum([
+    'DAYS_SUPPLY',
+    'DOMAIN_CONCEPT',
+    'DOMAIN_SOURCE_CONCEPT',
+    'DURATION',
+    'END_DATE',
+    'ERA_OCCURRENCES',
+    'GAP_DAYS',
+    'QUANTITY',
+    'RANGE_HIGH',
+    'RANGE_LOW',
+    'REFILLS',
+    'START_DATE',
+    'UNIT',
+    'VALUE_AS_NUMBER',
+    'VISIT_ID',
+    'VISIT_DETAIL_ID',
+  ]).optional(),
 })
 export type Occurrence = z.infer<typeof OccurrenceSchema>
 
@@ -89,8 +106,19 @@ export const ConceptSchema = z.object({
 })
 export type Concept = z.infer<typeof ConceptSchema>
 
+/**
+ * ConceptSetIdSchema
+ * Marks a plain number field as a reference to a ConceptSet.id (a "codeset id").
+ * This is a shared schema instance (reused via `ConceptSetIdSchema.optional()`) so that
+ * a concept-set-id reference field can be identified at runtime by reference-equality
+ * after unwrapping ZodOptional - the same pattern already used for ConceptSetSelectionSchema.
+ * Using this instead of a bare `z.number().optional()` has no effect on the inferred
+ * TypeScript type (still `number | undefined`).
+ */
+export const ConceptSetIdSchema = z.number()
+
 export const ConceptSetSelectionSchema = z.object({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   IsExclusion: z.boolean().optional(),
 })
 export type ConceptSetSelection = z.infer<typeof ConceptSetSelectionSchema>
@@ -152,7 +180,7 @@ export const DateOffsetStrategySchema = z.object({
 export type DateOffsetStrategy = z.infer<typeof DateOffsetStrategySchema>
 
 export const CustomEraStrategySchema = z.object({
-  DrugCodesetId: z.number().optional(),
+  DrugCodesetId: ConceptSetIdSchema.optional(),
   GapDays: z.number().optional(),
   Offset: z.number().optional(),
   DaysSupplyOverride: z.number().optional(),
@@ -180,7 +208,7 @@ const CriteriaBaseSchema = z.object({
  */
 
 export const ConditionEraSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   First: z.boolean().optional(),
   EraStartDate: DateRangeSchema.optional(),
   EraEndDate: DateRangeSchema.optional(),
@@ -194,14 +222,14 @@ export const ConditionEraSchema = CriteriaBaseSchema.extend({
 export type ConditionEra = z.infer<typeof ConditionEraSchema>
 
 export const ConditionOccurrenceSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   First: z.boolean().optional(),
   OccurrenceStartDate: DateRangeSchema.optional(),
   OccurrenceEndDate: DateRangeSchema.optional(),
   ConditionType: ConceptArraySchema.optional(),
   ConditionTypeCS: ConceptSetSelectionSchema.optional(),
   ConditionTypeExclude: z.boolean().optional(),
-  ConditionSourceConcept: z.number().optional(),
+  ConditionSourceConcept: ConceptSetIdSchema.optional(),
   Age: NumericRangeSchema.optional(),
   Gender: ConceptArraySchema.optional(),
   GenderCS: ConceptSetSelectionSchema.optional(),
@@ -215,28 +243,26 @@ export const ConditionOccurrenceSchema = CriteriaBaseSchema.extend({
 })
 export type ConditionOccurrence = z.infer<typeof ConditionOccurrenceSchema>
 
+/**
+ * Death Schema
+ * Mirrors org.ohdsi.circe.cohortdefinition.Death (circe-be) exactly - see that class
+ * for the authoritative field list. Do not add fields here that aren't on the Java class.
+ */
 export const DeathSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   OccurrenceStartDate: DateRangeSchema.optional(),
-  OccurrenceEndDate: DateRangeSchema.optional(),
   DeathType: ConceptArraySchema.optional(),
   DeathTypeCS: ConceptSetSelectionSchema.optional(),
   DeathTypeExclude: z.boolean().optional(),
-  DeathSourceConcept: ConceptArraySchema.optional(),
-  DeathSourceConceptCS: ConceptSetSelectionSchema.optional(),
-  DeathSourceConceptExclude: z.boolean().optional(),
+  DeathSourceConcept: ConceptSetIdSchema.optional(),
   Age: NumericRangeSchema.optional(),
   Gender: ConceptArraySchema.optional(),
   GenderCS: ConceptSetSelectionSchema.optional(),
-  ProviderSpecialty: ConceptArraySchema.optional(),
-  ProviderSpecialtyCS: ConceptSetSelectionSchema.optional(),
-  VisitType: ConceptArraySchema.optional(),
-  VisitTypeCS: ConceptSetSelectionSchema.optional(),
 })
 export type Death = z.infer<typeof DeathSchema>
 
 export const DeviceExposureSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   First: z.boolean().optional(),
   OccurrenceStartDate: DateRangeSchema.optional(),
   OccurrenceEndDate: DateRangeSchema.optional(),
@@ -245,7 +271,7 @@ export const DeviceExposureSchema = CriteriaBaseSchema.extend({
   DeviceTypeExclude: z.boolean().optional(),
   UniqueDeviceId: TextFilterSchema.optional(),
   Quantity: NumericRangeSchema.optional(),
-  DeviceSourceConcept: z.number().optional(),
+  DeviceSourceConcept: ConceptSetIdSchema.optional(),
   Age: NumericRangeSchema.optional(),
   Gender: ConceptArraySchema.optional(),
   GenderCS: ConceptSetSelectionSchema.optional(),
@@ -257,7 +283,7 @@ export const DeviceExposureSchema = CriteriaBaseSchema.extend({
 export type DeviceExposure = z.infer<typeof DeviceExposureSchema>
 
 export const DoseEraSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   First: z.boolean().optional(),
   EraStartDate: DateRangeSchema.optional(),
   EraEndDate: DateRangeSchema.optional(),
@@ -273,7 +299,7 @@ export const DoseEraSchema = CriteriaBaseSchema.extend({
 export type DoseEra = z.infer<typeof DoseEraSchema>
 
 export const DrugEraSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   First: z.boolean().optional(),
   EraStartDate: DateRangeSchema.optional(),
   EraEndDate: DateRangeSchema.optional(),
@@ -288,14 +314,14 @@ export const DrugEraSchema = CriteriaBaseSchema.extend({
 export type DrugEra = z.infer<typeof DrugEraSchema>
 
 export const DrugExposureSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   First: z.boolean().optional(),
   OccurrenceStartDate: DateRangeSchema.optional(),
   OccurrenceEndDate: DateRangeSchema.optional(),
   DrugType: ConceptArraySchema.optional(),
   DrugTypeCS: ConceptSetSelectionSchema.optional(),
   DrugTypeExclude: z.boolean().optional(),
-  DrugSourceConcept: z.number().optional(),
+  DrugSourceConcept: ConceptSetIdSchema.optional(),
   StopReason: TextFilterSchema.optional(),
   Refills: NumericRangeSchema.optional(),
   Quantity: NumericRangeSchema.optional(),
@@ -311,17 +337,20 @@ export const DrugExposureSchema = CriteriaBaseSchema.extend({
   GenderCS: ConceptSetSelectionSchema.optional(),
   ProviderSpecialty: ConceptArraySchema.optional(),
   ProviderSpecialtyCS: ConceptSetSelectionSchema.optional(),
+  VisitType: ConceptArraySchema.optional(),
+  VisitTypeCS: ConceptSetSelectionSchema.optional(),
 })
 export type DrugExposure = z.infer<typeof DrugExposureSchema>
 
 export const LocationRegionSchema = CriteriaBaseSchema.extend({
-  Region: z.string().optional(),
-  RegionExclude: z.boolean().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
+  StartDate: DateRangeSchema.optional(),
+  EndDate: DateRangeSchema.optional(),
 })
 export type LocationRegion = z.infer<typeof LocationRegionSchema>
 
 export const MeasurementSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   First: z.boolean().optional(),
   OccurrenceStartDate: DateRangeSchema.optional(),
   MeasurementType: ConceptArraySchema.optional(),
@@ -339,7 +368,7 @@ export const MeasurementSchema = CriteriaBaseSchema.extend({
   RangeHighRatio: NumericRangeSchema.optional(),
   RangeLowRatio: NumericRangeSchema.optional(),
   Abnormal: z.boolean().optional(),
-  MeasurementSourceConcept: z.number().optional(),
+  MeasurementSourceConcept: ConceptSetIdSchema.optional(),
   Age: NumericRangeSchema.optional(),
   Gender: ConceptArraySchema.optional(),
   GenderCS: ConceptSetSelectionSchema.optional(),
@@ -351,7 +380,7 @@ export const MeasurementSchema = CriteriaBaseSchema.extend({
 export type Measurement = z.infer<typeof MeasurementSchema>
 
 export const ObservationSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   First: z.boolean().optional(),
   OccurrenceStartDate: DateRangeSchema.optional(),
   ObservationType: ConceptArraySchema.optional(),
@@ -365,7 +394,7 @@ export const ObservationSchema = CriteriaBaseSchema.extend({
   QualifierCS: ConceptSetSelectionSchema.optional(),
   Unit: ConceptArraySchema.optional(),
   UnitCS: ConceptSetSelectionSchema.optional(),
-  ObservationSourceConcept: z.number().optional(),
+  ObservationSourceConcept: ConceptSetIdSchema.optional(),
   Age: NumericRangeSchema.optional(),
   Gender: ConceptArraySchema.optional(),
   GenderCS: ConceptSetSelectionSchema.optional(),
@@ -399,19 +428,19 @@ export const PayerPlanPeriodSchema = CriteriaBaseSchema.extend({
   AgeAtEnd: NumericRangeSchema.optional(),
   Gender: ConceptArraySchema.optional(),
   GenderCS: ConceptSetSelectionSchema.optional(),
-  PayerConcept: z.number().optional(),
-  PlanConcept: z.number().optional(),
-  SponsorConcept: z.number().optional(),
-  StopReasonConcept: z.number().optional(),
-  PayerSourceConcept: z.number().optional(),
-  PlanSourceConcept: z.number().optional(),
-  SponsorSourceConcept: z.number().optional(),
-  StopReasonSourceConcept: z.number().optional(),
+  PayerConcept: ConceptSetIdSchema.optional(),
+  PlanConcept: ConceptSetIdSchema.optional(),
+  SponsorConcept: ConceptSetIdSchema.optional(),
+  StopReasonConcept: ConceptSetIdSchema.optional(),
+  PayerSourceConcept: ConceptSetIdSchema.optional(),
+  PlanSourceConcept: ConceptSetIdSchema.optional(),
+  SponsorSourceConcept: ConceptSetIdSchema.optional(),
+  StopReasonSourceConcept: ConceptSetIdSchema.optional(),
 })
 export type PayerPlanPeriod = z.infer<typeof PayerPlanPeriodSchema>
 
 export const ProcedureOccurrenceSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   First: z.boolean().optional(),
   OccurrenceStartDate: DateRangeSchema.optional(),
   ProcedureType: ConceptArraySchema.optional(),
@@ -419,7 +448,7 @@ export const ProcedureOccurrenceSchema = CriteriaBaseSchema.extend({
   ProcedureTypeExclude: z.boolean().optional(),
   Modifier: ConceptArraySchema.optional(),
   ModifierCS: ConceptSetSelectionSchema.optional(),
-  ProcedureSourceConcept: z.number().optional(),
+  ProcedureSourceConcept: ConceptSetIdSchema.optional(),
   Age: NumericRangeSchema.optional(),
   Gender: ConceptArraySchema.optional(),
   GenderCS: ConceptSetSelectionSchema.optional(),
@@ -431,20 +460,20 @@ export const ProcedureOccurrenceSchema = CriteriaBaseSchema.extend({
 export type ProcedureOccurrence = z.infer<typeof ProcedureOccurrenceSchema>
 
 export const SpecimenSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   First: z.boolean().optional(),
   OccurrenceStartDate: DateRangeSchema.optional(),
   SpecimenType: ConceptArraySchema.optional(),
   SpecimenTypeCS: ConceptSetSelectionSchema.optional(),
   SpecimenTypeExclude: z.boolean().optional(),
-  SpecimenSourceId: TextFilterSchema.optional(),
+  SourceId: TextFilterSchema.optional(),
   Unit: ConceptArraySchema.optional(),
   UnitCS: ConceptSetSelectionSchema.optional(),
   AnatomicSite: ConceptArraySchema.optional(),
   AnatomicSiteCS: ConceptSetSelectionSchema.optional(),
   DiseaseStatus: ConceptArraySchema.optional(),
   DiseaseStatusCS: ConceptSetSelectionSchema.optional(),
-  SpecimenSourceConcept: z.number().optional(),
+  SpecimenSourceConcept: ConceptSetIdSchema.optional(),
   Age: NumericRangeSchema.optional(),
   Gender: ConceptArraySchema.optional(),
   GenderCS: ConceptSetSelectionSchema.optional(),
@@ -453,30 +482,30 @@ export const SpecimenSchema = CriteriaBaseSchema.extend({
 export type Specimen = z.infer<typeof SpecimenSchema>
 
 export const VisitDetailSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   First: z.boolean().optional(),
   VisitDetailStartDate: DateRangeSchema.optional(),
   VisitDetailEndDate: DateRangeSchema.optional(),
   VisitDetailTypeCS: ConceptSetSelectionSchema.optional(),
-  VisitDetailSourceConcept: z.number().optional(),
+  VisitDetailSourceConcept: ConceptSetIdSchema.optional(),
   VisitDetailLength: NumericRangeSchema.optional(),
   Age: NumericRangeSchema.optional(),
   GenderCS: ConceptSetSelectionSchema.optional(),
   ProviderSpecialtyCS: ConceptSetSelectionSchema.optional(),
   PlaceOfServiceCS: ConceptSetSelectionSchema.optional(),
-  PlaceOfServiceLocation: z.number().optional(),
+  PlaceOfServiceLocation: ConceptSetIdSchema.optional(),
 })
 export type VisitDetail = z.infer<typeof VisitDetailSchema>
 
 export const VisitOccurrenceSchema = CriteriaBaseSchema.extend({
-  CodesetId: z.number().optional(),
+  CodesetId: ConceptSetIdSchema.optional(),
   First: z.boolean().optional(),
   OccurrenceStartDate: DateRangeSchema.optional(),
   OccurrenceEndDate: DateRangeSchema.optional(),
   VisitType: ConceptArraySchema.optional(),
   VisitTypeCS: ConceptSetSelectionSchema.optional(),
   VisitTypeExclude: z.boolean().optional(),
-  VisitSourceConcept: z.number().optional(),
+  VisitSourceConcept: ConceptSetIdSchema.optional(),
   VisitLength: NumericRangeSchema.optional(),
   Age: NumericRangeSchema.optional(),
   Gender: ConceptArraySchema.optional(),
@@ -485,7 +514,7 @@ export const VisitOccurrenceSchema = CriteriaBaseSchema.extend({
   ProviderSpecialtyCS: ConceptSetSelectionSchema.optional(),
   PlaceOfService: ConceptArraySchema.optional(),
   PlaceOfServiceCS: ConceptSetSelectionSchema.optional(),
-  PlaceOfServiceLocation: z.number().optional(),
+  PlaceOfServiceLocation: ConceptSetIdSchema.optional(),
 })
 export type VisitOccurrence = z.infer<typeof VisitOccurrenceSchema>
 

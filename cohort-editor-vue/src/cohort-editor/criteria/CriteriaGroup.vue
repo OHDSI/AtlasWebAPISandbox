@@ -17,6 +17,7 @@
           >
             <div
               class="vertical-label match-type-label"
+              :data-type="groupType"
               :title="matchTypeChangeLabel"
             >
               {{ groupTypeLabel }}
@@ -129,6 +130,20 @@
           {{ deepNestingLabel }} ({{ depth }})
         </v-alert>
 
+        <div v-if="demographicCriteriaList.length > 0">
+          <DemographicCriteria
+            v-for="(criteriaItem, index) in demographicCriteriaList"
+            :key="`demographic-criteria-${index}`"
+            :criteria="criteriaItem"
+            :concept-sets="conceptSets"
+            class="mb-3"
+            @remove="removeDemographicCriteria(index)"
+            @select-concept-set="emit('select-concept-set', $event)"
+            @edit-concept-set="emit('edit-concept-set', $event)"
+            @clear-concept-set="emit('clear-concept-set')"
+          />
+        </div>
+
         <div v-if="criteriaList.length > 0">
           <CorelatedCriteria
             v-for="(criteriaItem, index) in criteriaList"
@@ -144,7 +159,7 @@
         </div>
 
         <v-alert
-          v-else
+          v-if="demographicCriteriaList.length === 0 && criteriaList.length === 0"
           variant="tonal"
           density="compact"
           class="mb-3"
@@ -174,12 +189,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from '@/composables/useI18n'
-import type { CriteriaGroup, CorelatedCriteria as CorelatedCriteriaType } from '../circe.types'
+import type { CriteriaGroup, CorelatedCriteria as CorelatedCriteriaType, DemographicCriteria as DemographicCriteriaType } from '../circe.types'
 import type { ConceptSetOption, ConceptSetSelectionTarget } from './criteria-editor.types'
 import { createDefaultWindow } from './window-utils'
 import CorelatedCriteria from './CorelatedCriteria.vue'
+import DemographicCriteria from './DemographicCriteria.vue'
 
-type CriteriaType = 'ConditionOccurrence' | 'ConditionEra' | 'DrugExposure' | 'DeviceExposure' | 'Death' | 'DoseEra' | 'DrugEra' | 'Measurement' | 'Observation' | 'ObservationPeriod' | 'PayerPlanPeriod' | 'ProcedureOccurrence' | 'Specimen' | 'VisitDetail' | 'VisitOccurrence'
+type CriteriaType = 'DemographicCriteria' | 'ConditionOccurrence' | 'ConditionEra' | 'DrugExposure' | 'DeviceExposure' | 'Death' | 'DoseEra' | 'DrugEra' | 'Measurement' | 'Observation' | 'ObservationPeriod' | 'PayerPlanPeriod' | 'ProcedureOccurrence' | 'Specimen' | 'VisitDetail' | 'VisitOccurrence'
 
 defineOptions({ name: 'CriteriaGroup' })
 
@@ -199,7 +215,6 @@ const emit = defineEmits<{
 const { t } = useI18n()
 
 const depth = computed(() => props.depth ?? 0)
-
 const showMatchTypeMenu = ref(false)
 
 const groupType = computed({
@@ -224,14 +239,18 @@ const groupCount = computed({
 const groupTypeLabel = computed(() => {
   switch (groupType.value) {
     case 'ANY':
-      return t('options.any', 'Any').value.toUpperCase()
-    case 'AT_LEAST':
-      return t('options.atLeast', 'At least').value.toUpperCase()
-    case 'AT_MOST':
-      return t('options.atMost', 'At most').value.toUpperCase()
+      return t('options.any', 'Any').value
+    case 'AT_LEAST': {
+      const n = props.group.Count ?? '?'
+      return `${t('options.atLeast', 'At least').value} ${n}`
+    }
+    case 'AT_MOST': {
+      const n = props.group.Count ?? '?'
+      return `${t('options.atMost', 'At most').value} ${n}`
+    }
     case 'ALL':
     default:
-      return t('options.all', 'All').value.toUpperCase()
+      return t('options.all', 'All').value
   }
 })
 
@@ -241,7 +260,9 @@ const addCriteriaLabel = computed(() => t('components.criteriaGroup.addCriteria'
 const addGroupLabel = computed(() => t('components.criteriaGroup.addNestedGroup', 'Add Group').value)
 const deepNestingLabel = computed(() => t('components.criteriaGroup.nestedCriteria.depthWarning', 'Deep nesting detected').value)
 const noCriteriaLabel = computed(() => t('components.criteriaGroup.noEventsInGroup', 'No correlated criteria in this group yet.').value)
+const demographicCriteriaLabel = computed(() => 'Demographic Criteria')
 const criteriaTypeOptions = computed<Array<{ title: string; value: CriteriaType }>>(() => [
+  { title: demographicCriteriaLabel.value, value: 'DemographicCriteria' },
   { title: t('criteria.conditionOccurrence.name', 'Condition Occurrence').value, value: 'ConditionOccurrence' },
   { title: t('criteria.conditionEra.name', 'Condition Era').value, value: 'ConditionEra' },
   { title: t('criteria.drugExposure.name', 'Drug Exposure').value, value: 'DrugExposure' },
@@ -259,6 +280,7 @@ const criteriaTypeOptions = computed<Array<{ title: string; value: CriteriaType 
   { title: t('criteria.death.name', 'Death').value, value: 'Death' },
 ])
 
+const demographicCriteriaList = computed(() => ensureDemographicCriteriaList())
 const criteriaList = computed(() => ensureCriteriaList())
 const nestedGroups = computed(() => ensureNestedGroups())
 
@@ -276,6 +298,21 @@ function ensureNestedGroups() {
   return props.group.Groups
 }
 
+function ensureDemographicCriteriaList() {
+  if (!props.group.DemographicCriteriaList) {
+    props.group.DemographicCriteriaList = []
+  }
+  return props.group.DemographicCriteriaList
+}
+
+function createDefaultDemographicCriteria(): DemographicCriteriaType {
+  return {}
+}
+
+function addDemographicCriteria() {
+  ensureDemographicCriteriaList().push(createDefaultDemographicCriteria())
+}
+
 function createDefaultCorelatedCriteria(): CorelatedCriteriaType {
   return {
     Criteria: { ConditionOccurrence: {} },
@@ -290,6 +327,11 @@ function createDefaultCorelatedCriteria(): CorelatedCriteriaType {
 }
 
 function addCriteria(type: CriteriaType) {
+  if (type === 'DemographicCriteria') {
+    addDemographicCriteria()
+    return
+  }
+
   const criteria = createDefaultCorelatedCriteria()
   criteria.Criteria = {
     [type]: {},
@@ -311,6 +353,10 @@ function addNestedGroup() {
 
 function removeCriteria(index: number) {
   ensureCriteriaList().splice(index, 1)
+}
+
+function removeDemographicCriteria(index: number) {
+  ensureDemographicCriteriaList().splice(index, 1)
 }
 
 function removeNestedGroup(index: number) {

@@ -176,6 +176,33 @@
                     @edit-concept-set="emit('edit-concept-set', $event)"
                     @clear-concept-set="emit('clear-concept-set')"
                   />
+
+                  <div
+                    v-if="expression.AdditionalCriteria"
+                    class="additional-criteria-section__limit section-controls align-self-end mt-3"
+                  >
+                    <div class="section-controls__label">
+                      {{ limitRestrictedEventsLabel }}
+                    </div>
+
+                    <v-btn-toggle
+                      v-model="qualifiedLimitType"
+                      mandatory
+                      variant="outlined"
+                      density="compact"
+                      divided
+                    >
+                      <v-btn value="First">
+                        {{ earliestLabel }}
+                      </v-btn>
+                      <v-btn value="All">
+                        {{ allLabel }}
+                      </v-btn>
+                      <v-btn value="Last">
+                        {{ latestLabel }}
+                      </v-btn>
+                    </v-btn-toggle>
+                  </div>
                 </div>
               </div>
             </div>
@@ -194,16 +221,21 @@
           <h3 class="section-title">
             {{ inclusionCriteriaLabel }}
           </h3>
-          <span class="section-state-chip section-state-chip--muted">
-            {{ mockedForNowLabel }}
+          <span
+            :class="['section-state-chip', `section-state-chip--${inclusionRulesStateTone}`]"
+          >
+            {{ inclusionRulesState }}
           </span>
         </div>
-        <v-alert
-          variant="tonal"
-          density="compact"
-        >
-          {{ inclusionShellLabel }}
-        </v-alert>
+        <InclusionRulesPanel
+          v-model="inclusionRules"
+          :concept-sets="conceptSets"
+          :expression-limit="expression.ExpressionLimit"
+          @update:expressionLimit="expression.ExpressionLimit = $event"
+          @select-concept-set="emit('select-concept-set', $event)"
+          @edit-concept-set="emit('edit-concept-set', $event)"
+          @clear-concept-set="emit('clear-concept-set')"
+        />
       </div>
     </section>
 
@@ -217,16 +249,14 @@
           <h3 class="section-title">
             {{ exitCriteriaLabel }}
           </h3>
-          <span class="section-state-chip section-state-chip--muted">
-            {{ mockedForNowLabel }}
-          </span>
         </div>
-        <v-alert
-          variant="tonal"
-          density="compact"
-        >
-          {{ exitShellLabel }}
-        </v-alert>
+        <EndStrategyPanel
+          :expression="expression"
+          :concept-sets="conceptSets"
+          @select-concept-set="emit('select-concept-set', $event)"
+          @edit-concept-set="emit('edit-concept-set', $event)"
+          @clear-concept-set="emit('clear-concept-set')"
+        />
       </div>
     </section>
   </div>
@@ -237,7 +267,9 @@ import { computed } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import CriteriaRenderer from './criteria/CriteriaRenderer.vue'
 import CriteriaGroup from './criteria/CriteriaGroup.vue'
-import type { CohortExpression, Criteria, CriteriaGroup as CriteriaGroupType } from './circe.types'
+import InclusionRulesPanel from './inclusion-rules/InclusionRulesPanel.vue'
+import EndStrategyPanel from './end-strategy/EndStrategyPanel.vue'
+import type { CohortExpression, Criteria, CriteriaGroup as CriteriaGroupType, InclusionRule } from './circe.types'
 import type { ConceptSetOption, ConceptSetSelectionTarget } from './criteria/criteria-editor.types'
 
 type PrimaryCriteriaLimitType = 'First' | 'All' | 'Last'
@@ -268,11 +300,9 @@ const daysBeforeLabel = computed(() => t('components.cohortExpressionEditor.days
 const daysAfterLabel = computed(() => t('components.cohortExpressionEditor.daysAfter', 'Days after').value)
 const noPrimaryCriteriaLabel = computed(() => t('components.cohortExpressionEditor.noPrimaryCriteria', 'No primary criteria yet. Click "Add Criteria to Group" to start.').value)
 const restrictInitialEventsLabel = computed(() => t('components.cohortExpressionEditor.restrictInitialEvents', 'Restrict Initial Events').value)
+const limitRestrictedEventsLabel = computed(() => 'Limit Restricted Events to')
 const inclusionCriteriaLabel = computed(() => t('components.cohortExpressionEditor.inclusionCriteria', 'Inclusion Criteria').value)
-const mockedForNowLabel = computed(() => t('components.cohortExpressionEditor.mockedForNow', 'Mocked for now').value)
-const inclusionShellLabel = computed(() => t('components.cohortExpressionEditor.inclusionShell', 'This section will follow the Atlas3 inclusion-criteria shell.').value)
 const exitCriteriaLabel = computed(() => t('components.cohortExpressionEditor.exitCriteria', 'Exit & Eras').value)
-const exitShellLabel = computed(() => t('components.cohortExpressionEditor.exitShell', 'This section will mirror Atlas3 exit criteria and censor window controls.').value)
 
 const criteriaTypes = [
   'ConditionOccurrence',
@@ -299,6 +329,20 @@ const entryEventsState = computed(() => {
   return count > 0 ? `${count} event${count === 1 ? '' : 's'}` : 'Empty'
 })
 
+const inclusionRules = computed<InclusionRule[]>({
+  get: () => ensureInclusionRules(),
+  set: value => {
+    props.expression.InclusionRules = value
+  },
+})
+
+const inclusionRulesState = computed(() => {
+  const count = inclusionRules.value.length
+  return count > 0 ? `${count} rule${count === 1 ? '' : 's'}` : 'Empty'
+})
+
+const inclusionRulesStateTone = computed(() => (inclusionRules.value.length > 0 ? 'primary' : 'muted'))
+
 const observationPriorDays = computed<number>({
   get: () => props.expression.PrimaryCriteria?.ObservationWindow?.PriorDays ?? 0,
   set: value => {
@@ -323,6 +367,13 @@ const primaryCriteriaLimitType = computed<PrimaryCriteriaLimitType>({
   },
 })
 
+const qualifiedLimitType = computed<PrimaryCriteriaLimitType>({
+  get: () => props.expression.QualifiedLimit?.Type ?? 'First',
+  set: value => {
+    props.expression.QualifiedLimit = { Type: value }
+  },
+})
+
 function ensurePrimaryCriteria() {
   if (!props.expression.PrimaryCriteria) {
     props.expression.PrimaryCriteria = { CriteriaList: [] }
@@ -339,6 +390,14 @@ function ensureObservationWindow() {
     primaryCriteria.ObservationWindow = { PriorDays: 0, PostDays: 0 }
   }
   return primaryCriteria.ObservationWindow
+}
+
+function ensureInclusionRules() {
+  if (!props.expression.InclusionRules) {
+    props.expression.InclusionRules = []
+  }
+
+  return props.expression.InclusionRules
 }
 
 function addPrimaryCriteria(type: string) {

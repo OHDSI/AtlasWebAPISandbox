@@ -35,7 +35,7 @@
           <div class="date-adjustment-editor__row d-flex ga-3 flex-wrap">
             <v-select
               class="date-adjustment-editor__select"
-              :model-value="activeValue.StartWith"
+              v-model="modelValue.StartWith"
               :items="dateReferenceOptions"
               item-title="label"
               item-value="value"
@@ -43,19 +43,17 @@
               variant="outlined"
               density="compact"
               hide-details
-              @update:model-value="updateStartWith"
             />
 
             <v-text-field
               class="date-adjustment-editor__offset"
-              :model-value="activeValue.StartOffset"
+              v-model="startOffset"
               :label="offsetDaysLabel"
               type="number"
               variant="outlined"
               density="compact"
               hide-details
               :suffix="daysSuffix"
-              @update:model-value="updateStartOffset"
             />
           </div>
         </div>
@@ -70,7 +68,7 @@
           <div class="date-adjustment-editor__row d-flex ga-3 flex-wrap">
             <v-select
               class="date-adjustment-editor__select"
-              :model-value="activeValue.EndWith"
+              v-model="modelValue.EndWith"
               :items="dateReferenceOptions"
               item-title="label"
               item-value="value"
@@ -78,19 +76,17 @@
               variant="outlined"
               density="compact"
               hide-details
-              @update:model-value="updateEndWith"
             />
 
             <v-text-field
               class="date-adjustment-editor__offset"
-              :model-value="activeValue.EndOffset"
+              v-model="endOffset"
               :label="offsetDaysLabel"
               type="number"
               variant="outlined"
               density="compact"
               hide-details
               :suffix="daysSuffix"
-              @update:model-value="updateEndOffset"
             />
           </div>
         </div>
@@ -100,20 +96,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, toRef } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import type { DateAdjustment } from '../circe.types'
-import { createDefaultDateAdjustment } from '../criteria/criteria-editor-helper'
+import { numberBinding } from './bindings'
 
 const { t } = useI18n()
 
 const props = defineProps<{
-  modelValue?: DateAdjustment
+  modelValue: DateAdjustment
 }>()
 
 const menuOpen = ref(false)
-
-const activeValue = computed(() => props.modelValue ?? createDefaultDateAdjustment())
+const modelValue = toRef(props, 'modelValue')
+const startOffset = numberBinding(modelValue, 'StartOffset')
+const endOffset = numberBinding(modelValue, 'EndOffset')
 
 const dateReferenceOptions = computed(() => [
   { label: t('options.startDate', 'Start Date').value, value: 'START_DATE' },
@@ -131,36 +128,8 @@ const summaryStartLabel = computed(() => t('common.start', 'Start').value)
 const summaryEndLabel = computed(() => t('common.end', 'End').value)
 
 const summaryLabel = computed(() => {
-  return `${summaryStartLabel.value}: ${formatDateReference(activeValue.value.StartWith)} ${formatOffset(activeValue.value.StartOffset)}, ${summaryEndLabel.value}: ${formatDateReference(activeValue.value.EndWith)} ${formatOffset(activeValue.value.EndOffset)}`
+  return `${summaryStartLabel.value}: ${formatDateReference(modelValue.value.StartWith)} ${formatOffset(modelValue.value.StartOffset)}, ${summaryEndLabel.value}: ${formatDateReference(modelValue.value.EndWith)} ${formatOffset(modelValue.value.EndOffset)}`
 })
-
-function updateStartWith(value: unknown) {
-  if (!props.modelValue) return
-  props.modelValue.StartWith = value === 'END_DATE' ? 'END_DATE' : 'START_DATE'
-}
-
-function updateStartOffset(value: unknown) {
-  if (!props.modelValue) return
-  props.modelValue.StartOffset = normalizeOffset(value)
-}
-
-function updateEndWith(value: unknown) {
-  if (!props.modelValue) return
-  props.modelValue.EndWith = value === 'START_DATE' ? 'START_DATE' : 'END_DATE'
-}
-
-function updateEndOffset(value: unknown) {
-  if (!props.modelValue) return
-  props.modelValue.EndOffset = normalizeOffset(value)
-}
-
-function normalizeOffset(value: unknown) {
-  if (value === '' || value === null || value === undefined) {
-    return 0
-  }
-
-  return Number(value)
-}
 
 function formatDateReference(value: 'START_DATE' | 'END_DATE' | undefined) {
   return value === 'END_DATE' ? summaryEndLabel.value : summaryStartLabel.value
@@ -169,7 +138,7 @@ function formatDateReference(value: 'START_DATE' | 'END_DATE' | undefined) {
 function formatOffset(value: number | undefined) {
   const offset = value ?? 0
   const sign = offset < 0 ? '-' : '+'
-  return `${sign} ${Math.abs(offset)}${t('common.daysAbbr', 'd').value}`
+  return `${sign}${Math.abs(offset)}${t('common.daysAbbr', 'd').value}`
 }
 </script>
 

@@ -43,6 +43,7 @@
       <div class="cohort-builder__main-row">
         <div class="cohort-builder__editor-pane">
           <CohortExpressionEditor
+            :key="expressionKey"
             :expression="expression"
             :concept-sets="availableConceptSets"
             @select-concept-set="openConceptSetSelection($event)"
@@ -109,7 +110,8 @@
       <ConceptSetsListDialog
         v-model="showConceptSetsDialog"
         :concept-sets="currentConceptSets"
-        :used-concept-sets="currentConceptSets"
+        :used-concept-sets="usedConceptSets"
+        @delete="handleDeleteConceptSet"
       />
 
       <ConceptSetSelectionDialog
@@ -141,6 +143,7 @@ import {
   CohortExpressionSchema,
   type CohortExpression,
 } from './circe.types'
+import { findUsedConceptSetIds, unassignConceptSetId } from './concept-set-usage'
 import type { ConceptSetSelectionTarget } from './criteria/criteria-editor.types'
 
 type ValidationSeverity = 'INFO' | 'WARNING' | 'CRITICAL'
@@ -153,6 +156,8 @@ interface ValidationWarning {
 const expression = reactive<CohortExpression>({
   ...createDefaultExpression(),
 })
+
+const expressionKey = ref(0)
 
 const showJsonDialog = ref(false)
 const showConceptSetsDialog = ref(false)
@@ -168,6 +173,11 @@ const currentConceptSets = computed(() => {
       conceptSet.id !== undefined && conceptSet.name !== undefined
     ))
     .map(conceptSet => ({ id: conceptSet.id, name: conceptSet.name }))
+})
+
+const usedConceptSets = computed(() => {
+  const usedIds = findUsedConceptSetIds(expression)
+  return currentConceptSets.value.filter(conceptSet => usedIds.has(conceptSet.id))
 })
 
 const mockRepositoryConceptSets = [
@@ -264,6 +274,7 @@ function handleImportJson(jsonString: string) {
     }
 
     Object.assign(expression, result.data)
+    expressionKey.value++
     showJsonDialog.value = false
   } catch (error) {
     alert(`Error importing JSON: ${error instanceof Error ? error.message : String(error)}`)
@@ -283,6 +294,7 @@ function exportJson() {
 
 function resetExpression() {
   Object.assign(expression, createDefaultExpression())
+  expressionKey.value++
 }
 
 function openConceptSetSelection(target: ConceptSetSelectionTarget | undefined) {
@@ -292,6 +304,17 @@ function openConceptSetSelection(target: ConceptSetSelectionTarget | undefined) 
 
   selectedConceptSetTarget.value = target
   showConceptSetSelectionDialog.value = true
+}
+
+function handleDeleteConceptSet(conceptSet: { id: number | string; name: string }) {
+  const conceptSetId = Number(conceptSet.id)
+
+  // Clear every reference to this concept set throughout the expression graph
+  // before removing it, since we don't know what any observers of the
+  // now-dangling id would otherwise do with it.
+  unassignConceptSetId(expression, conceptSetId)
+
+  expression.ConceptSets = (expression.ConceptSets || []).filter(cs => cs.id !== conceptSetId)
 }
 
 function nextConceptSetId() {

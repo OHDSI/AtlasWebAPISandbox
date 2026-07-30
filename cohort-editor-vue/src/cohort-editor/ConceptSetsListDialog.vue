@@ -17,6 +17,7 @@
               <th class="text-left">Name</th>
               <th class="text-left">Concepts</th>
               <th class="text-left">Status</th>
+              <th class="text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -37,6 +38,22 @@
                     Unused
                 </v-chip>
               </td>
+              <td>
+                <AtlasIconButton
+                  icon="mdi-pencil-outline"
+                  ariaLabel="Edit"
+                  variant="text"
+                  size="sm"
+                  @click="$emit('view', conceptSet)"
+                />
+                <AtlasIconButton
+                  icon="mdi-delete-outline"
+                  ariaLabel="Delete"
+                  variant="text"
+                  size="sm"
+                  @click="$emit('delete', conceptSet)"
+                />
+              </td>
             </tr>
           </tbody>
         </v-table>
@@ -56,6 +73,8 @@
 </template>
 
 <script setup lang="ts">
+import { AtlasIconButton } from '@/components/ui'
+
 interface ConceptSetReference {
   id: number | string
   name: string
@@ -72,6 +91,8 @@ const props = defineProps<Props>()
 
 defineEmits<{
   'update:modelValue': [value: boolean]
+  view: [conceptSet: ConceptSetReference]
+  delete: [conceptSet: ConceptSetReference]
 }>()
 
 function isUnused(conceptSet: ConceptSetReference): boolean {

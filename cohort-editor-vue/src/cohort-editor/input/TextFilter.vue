@@ -2,36 +2,37 @@
   <div class="text-filter d-flex align-center ga-2 flex-nowrap">
     <v-select
       class="text-filter__operator"
-      :model-value="activeValue?.Op"
+      v-model="operator"
       :items="operators"
       item-title="title"
       item-value="value"
       variant="outlined"
       density="compact"
       hide-details
-      @update:model-value="(value) => setOp(value as TextFilterOp)"
     />
     <v-text-field
       class="text-filter__value"
-      :model-value="activeValue?.Value"
+      v-model="value"
       variant="outlined"
       density="compact"
       hide-details
-      @update:model-value="(value) => setValue(value)"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, toRef } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import type { TextFilter, TextFilterOp } from '../circe.types'
+import { optionalTextBinding } from './bindings'
 
 const { t } = useI18n()
 
 const props = defineProps<{
-  modelValue?: TextFilter
+  modelValue: TextFilter
 }>()
+
+const modelValue = toRef(props, 'modelValue')
 
 const operators = computed(() => [
   { title: t('options.endsWith', 'ends with').value, value: 'endsWith' },
@@ -42,17 +43,15 @@ const operators = computed(() => [
   { title: t('options.notContains', 'not contains').value, value: '!contains' },
 ])
 
-const activeValue = computed(() => props.modelValue)
+const operator = computed<TextFilterOp | undefined>({
+  get: () => modelValue.value.Op,
+  set: (value: TextFilterOp | undefined) => {
+    if (value === undefined) return
+    modelValue.value.Op = value
+  },
+})
 
-function setOp(op: TextFilterOp) {
-  if (!props.modelValue) return
-  props.modelValue.Op = op
-}
-
-function setValue(value: unknown) {
-  if (!props.modelValue) return
-  props.modelValue.Value = value === '' || value === null || value === undefined ? undefined : String(value)
-}
+const value = optionalTextBinding(modelValue, 'Value')
 </script>
 
 <style scoped>

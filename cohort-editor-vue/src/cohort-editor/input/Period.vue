@@ -2,53 +2,46 @@
   <div class="period-editor d-flex align-center ga-2 flex-nowrap">
     <v-text-field
       class="period-editor__value"
-      :model-value="activeValue?.StartDate"
+      v-model="startDate"
       type="date"
       variant="outlined"
       density="compact"
       hide-details
       :label="startLabel"
-      @update:model-value="(value) => setStartDate(value)"
     />
     <span class="period-editor__and text-medium-emphasis">{{ andLabel }}</span>
     <v-text-field
       class="period-editor__value"
-      :model-value="activeValue?.EndDate"
+      v-model="endDate"
       type="date"
       variant="outlined"
       density="compact"
       hide-details
       :label="endLabel"
-      @update:model-value="(value) => setEndDate(value)"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, toRef } from 'vue'
 import { useI18n } from '@/composables/useI18n'
 import type { Period } from '../circe.types'
+import { optionalTextBinding } from './bindings'
 
 const { t } = useI18n()
 
 const props = defineProps<{
-  modelValue?: Period
+  modelValue: Period
 }>()
 
-const activeValue = computed(() => props.modelValue)
+const modelValue = toRef(props, 'modelValue')
+
 const startLabel = computed(() => t('common.startDate', 'start date').value)
 const endLabel = computed(() => t('common.endDate', 'end date').value)
 const andLabel = computed(() => t('common.and', 'and').value)
 
-function setStartDate(value: unknown) {
-  if (!props.modelValue) return
-  props.modelValue.StartDate = value === '' || value === null || value === undefined ? undefined : String(value)
-}
-
-function setEndDate(value: unknown) {
-  if (!props.modelValue) return
-  props.modelValue.EndDate = value === '' || value === null || value === undefined ? undefined : String(value)
-}
+const startDate = optionalTextBinding(modelValue, 'StartDate')
+const endDate = optionalTextBinding(modelValue, 'EndDate')
 </script>
 
 <style scoped>
