@@ -19,7 +19,7 @@
             </div>
 
             <v-btn-toggle
-              v-model="primaryCriteriaLimitType"
+              v-model="expression.PrimaryCriteria.PrimaryCriteriaLimit.Type"
               mandatory
               variant="outlined"
               density="compact"
@@ -136,7 +136,7 @@
 
               <div class="entry-events-list">
                 <v-alert
-                  v-if="!entryCriteria.length"
+                  v-if="!expression.PrimaryCriteria.CriteriaList.length"
                   type="info"
                   variant="tonal"
                   density="compact"
@@ -146,7 +146,7 @@
                 </v-alert>
 
                 <CriteriaRenderer
-                  v-for="(criteria, index) in entryCriteria"
+                  v-for="(criteria, index) in expression.PrimaryCriteria.CriteriaList"
                   :key="`criteria-${index}`"
                   :criteria="criteria"
                   :concept-sets="conceptSets"
@@ -186,7 +186,7 @@
                     </div>
 
                     <v-btn-toggle
-                      v-model="qualifiedLimitType"
+                      v-model="expression.QualifiedLimit.Type"
                       mandatory
                       variant="outlined"
                       density="compact"
@@ -227,8 +227,9 @@
             {{ inclusionRulesState }}
           </span>
         </div>
+
         <InclusionRulesPanel
-          v-model="inclusionRules"
+          v-model="expression.InclusionRules"
           :concept-sets="conceptSets"
           :expression-limit="expression.ExpressionLimit"
           @update:expressionLimit="expression.ExpressionLimit = $event"
@@ -250,6 +251,7 @@
             {{ exitCriteriaLabel }}
           </h3>
         </div>
+
         <EndStrategyPanel
           :expression="expression"
           :concept-sets="conceptSets"
@@ -265,14 +267,52 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from '@/composables/useI18n'
+import { normalizeDefaults } from '@/utils/normalize'
 import CriteriaRenderer from './criteria/CriteriaRenderer.vue'
 import CriteriaGroup from './criteria/CriteriaGroup.vue'
 import InclusionRulesPanel from './inclusion-rules/InclusionRulesPanel.vue'
 import EndStrategyPanel from './end-strategy/EndStrategyPanel.vue'
-import type { CohortExpression, Criteria, CriteriaGroup as CriteriaGroupType, InclusionRule } from './circe.types'
-import type { ConceptSetOption, ConceptSetSelectionTarget } from './criteria/criteria-editor.types'
+import type {
+  CohortExpression,
+  Criteria,
+  CriteriaGroup as CriteriaGroupType,
+  InclusionRule,
+  ObservationFilter,
+  PrimaryCriteria,
+  ResultLimit,
+} from './circe.types'
+import type {
+  ConceptSetOption,
+  ConceptSetSelectionTarget,
+} from './criteria/criteria-editor.types'
 
 type PrimaryCriteriaLimitType = 'First' | 'All' | 'Last'
+
+/**
+ * This component always presents editing controls for these portions
+ * of the CIRCE expression, so it guarantees that they exist while
+ * the expression is being edited here.
+ */
+type EditablePrimaryCriteria =
+  PrimaryCriteria & {
+    CriteriaList: Criteria[]
+    ObservationWindow: ObservationFilter & {
+      PriorDays: number
+      PostDays: number
+    }
+    PrimaryCriteriaLimit: ResultLimit & {
+      Type: PrimaryCriteriaLimitType
+    }
+  }
+
+type EditableCohortExpression =
+  CohortExpression & {
+    PrimaryCriteria: EditablePrimaryCriteria
+    QualifiedLimit: ResultLimit & {
+      Type: PrimaryCriteriaLimitType
+    }
+    InclusionRules: InclusionRule[]
+  }
 
 const props = defineProps<{
   expression: CohortExpression
@@ -285,24 +325,134 @@ const emit = defineEmits<{
   'clear-concept-set': []
 }>()
 
+/**
+ * Normalize the portion of the CIRCE graph this component owns.
+ *
+ * AdditionalCriteria deliberately remains optional because its absence
+ * represents a meaningful UI state.
+ *
+ * ExpressionLimit and EndStrategy are left to their child editors.
+ */
+const expression = computed<EditableCohortExpression>(() =>
+  normalizeDefaults<EditableCohortExpression>(
+    {
+      PrimaryCriteria: {
+        CriteriaList: [],
+        ObservationWindow: {
+          PriorDays: 0,
+          PostDays: 0,
+        },
+        PrimaryCriteriaLimit: {
+          Type: 'First',
+        },
+      },
+      QualifiedLimit: {
+        Type: 'First',
+      },
+      InclusionRules: [],
+    },
+    props.expression,
+  ),
+)
+
 const { t } = useI18n()
 
-const cohortEntryEventsLabel = computed(() => t('components.cohortExpressionEditor.entryEvents', 'Cohort Entry Events').value)
-const cohortEntryOnLabel = computed(() => t('components.cohortExpressionEditor.entryOn', 'Cohort Entry On').value)
-const earliestLabel = computed(() => t('options.earliest', 'Earliest').value)
-const allLabel = computed(() => t('options.all', 'All').value)
-const latestLabel = computed(() => t('options.latest', 'Latest').value)
-const anyLabel = computed(() => t('options.any', 'any').value)
-const entryEventsAnyHintLabel = computed(() => t('components.cohortExpressionEditor.entryEventsAnyHint', 'Entry events are matched with ANY (or)').value)
-const addCriteriaLabel = computed(() => t('components.cohortExpressionEditor.addCriteriaToGroup', 'Add Criteria to Group').value)
-const continuousObservationLabel = computed(() => t('components.cohortExpressionEditor.continuousObservation', 'Continuous observation').value)
-const daysBeforeLabel = computed(() => t('components.cohortExpressionEditor.daysBefore', 'Days before').value)
-const daysAfterLabel = computed(() => t('components.cohortExpressionEditor.daysAfter', 'Days after').value)
-const noPrimaryCriteriaLabel = computed(() => t('components.cohortExpressionEditor.noPrimaryCriteria', 'No primary criteria yet. Click "Add Criteria to Group" to start.').value)
-const restrictInitialEventsLabel = computed(() => t('components.cohortExpressionEditor.restrictInitialEvents', 'Restrict Initial Events').value)
-const limitRestrictedEventsLabel = computed(() => 'Limit Restricted Events to')
-const inclusionCriteriaLabel = computed(() => t('components.cohortExpressionEditor.inclusionCriteria', 'Inclusion Criteria').value)
-const exitCriteriaLabel = computed(() => t('components.cohortExpressionEditor.exitCriteria', 'Exit & Eras').value)
+const cohortEntryEventsLabel = computed(() =>
+  t(
+    'components.cohortExpressionEditor.entryEvents',
+    'Cohort Entry Events',
+  ).value,
+)
+
+const cohortEntryOnLabel = computed(() =>
+  t(
+    'components.cohortExpressionEditor.entryOn',
+    'Cohort Entry On',
+  ).value,
+)
+
+const earliestLabel = computed(() =>
+  t('options.earliest', 'Earliest').value,
+)
+
+const allLabel = computed(() =>
+  t('options.all', 'All').value,
+)
+
+const latestLabel = computed(() =>
+  t('options.latest', 'Latest').value,
+)
+
+const anyLabel = computed(() =>
+  t('options.any', 'any').value,
+)
+
+const entryEventsAnyHintLabel = computed(() =>
+  t(
+    'components.cohortExpressionEditor.entryEventsAnyHint',
+    'Entry events are matched with ANY (or)',
+  ).value,
+)
+
+const addCriteriaLabel = computed(() =>
+  t(
+    'components.cohortExpressionEditor.addCriteriaToGroup',
+    'Add Criteria to Group',
+  ).value,
+)
+
+const continuousObservationLabel = computed(() =>
+  t(
+    'components.cohortExpressionEditor.continuousObservation',
+    'Continuous observation',
+  ).value,
+)
+
+const daysBeforeLabel = computed(() =>
+  t(
+    'components.cohortExpressionEditor.daysBefore',
+    'Days before',
+  ).value,
+)
+
+const daysAfterLabel = computed(() =>
+  t(
+    'components.cohortExpressionEditor.daysAfter',
+    'Days after',
+  ).value,
+)
+
+const noPrimaryCriteriaLabel = computed(() =>
+  t(
+    'components.cohortExpressionEditor.noPrimaryCriteria',
+    'No primary criteria yet. Click "Add Criteria to Group" to start.',
+  ).value,
+)
+
+const restrictInitialEventsLabel = computed(() =>
+  t(
+    'components.cohortExpressionEditor.restrictInitialEvents',
+    'Restrict Initial Events',
+  ).value,
+)
+
+const limitRestrictedEventsLabel = computed(
+  () => 'Limit Restricted Events to',
+)
+
+const inclusionCriteriaLabel = computed(() =>
+  t(
+    'components.cohortExpressionEditor.inclusionCriteria',
+    'Inclusion Criteria',
+  ).value,
+)
+
+const exitCriteriaLabel = computed(() =>
+  t(
+    'components.cohortExpressionEditor.exitCriteria',
+    'Exit & Eras',
+  ).value,
+)
 
 const criteriaTypes = [
   'ConditionOccurrence',
@@ -322,83 +472,51 @@ const criteriaTypes = [
   'Death',
 ]
 
-const entryCriteria = computed(() => ensurePrimaryCriteria().CriteriaList ?? [])
-
 const entryEventsState = computed(() => {
-  const count = entryCriteria.value.length
-  return count > 0 ? `${count} event${count === 1 ? '' : 's'}` : 'Empty'
-})
+  const count = expression.value.PrimaryCriteria.CriteriaList.length
 
-const inclusionRules = computed<InclusionRule[]>({
-  get: () => ensureInclusionRules(),
-  set: value => {
-    props.expression.InclusionRules = value
-  },
+  return count > 0
+    ? `${count} event${count === 1 ? '' : 's'}`
+    : 'Empty'
 })
 
 const inclusionRulesState = computed(() => {
-  const count = inclusionRules.value.length
-  return count > 0 ? `${count} rule${count === 1 ? '' : 's'}` : 'Empty'
+  const count = expression.value.InclusionRules.length
+
+  return count > 0
+    ? `${count} rule${count === 1 ? '' : 's'}`
+    : 'Empty'
 })
 
-const inclusionRulesStateTone = computed(() => (inclusionRules.value.length > 0 ? 'primary' : 'muted'))
+const inclusionRulesStateTone = computed(() =>
+  expression.value.InclusionRules.length > 0
+    ? 'primary'
+    : 'muted',
+)
 
+/**
+ * These remain writable computeds because the text fields can provide
+ * string-like values and the CIRCE model should retain numeric values.
+ */
 const observationPriorDays = computed<number>({
-  get: () => props.expression.PrimaryCriteria?.ObservationWindow?.PriorDays ?? 0,
+  get: () =>
+    expression.value.PrimaryCriteria.ObservationWindow.PriorDays,
+
   set: value => {
-    const window = ensureObservationWindow()
-    window.PriorDays = Number(value) || 0
+    expression.value.PrimaryCriteria.ObservationWindow.PriorDays =
+      Number(value) || 0
   },
 })
 
 const observationPostDays = computed<number>({
-  get: () => props.expression.PrimaryCriteria?.ObservationWindow?.PostDays ?? 0,
+  get: () =>
+    expression.value.PrimaryCriteria.ObservationWindow.PostDays,
+
   set: value => {
-    const window = ensureObservationWindow()
-    window.PostDays = Number(value) || 0
+    expression.value.PrimaryCriteria.ObservationWindow.PostDays =
+      Number(value) || 0
   },
 })
-
-const primaryCriteriaLimitType = computed<PrimaryCriteriaLimitType>({
-  get: () => props.expression.PrimaryCriteria?.PrimaryCriteriaLimit?.Type ?? 'First',
-  set: value => {
-    const primaryCriteria = ensurePrimaryCriteria()
-    primaryCriteria.PrimaryCriteriaLimit = { Type: value }
-  },
-})
-
-const qualifiedLimitType = computed<PrimaryCriteriaLimitType>({
-  get: () => props.expression.QualifiedLimit?.Type ?? 'First',
-  set: value => {
-    props.expression.QualifiedLimit = { Type: value }
-  },
-})
-
-function ensurePrimaryCriteria() {
-  if (!props.expression.PrimaryCriteria) {
-    props.expression.PrimaryCriteria = { CriteriaList: [] }
-  }
-  if (!props.expression.PrimaryCriteria.CriteriaList) {
-    props.expression.PrimaryCriteria.CriteriaList = []
-  }
-  return props.expression.PrimaryCriteria
-}
-
-function ensureObservationWindow() {
-  const primaryCriteria = ensurePrimaryCriteria()
-  if (!primaryCriteria.ObservationWindow) {
-    primaryCriteria.ObservationWindow = { PriorDays: 0, PostDays: 0 }
-  }
-  return primaryCriteria.ObservationWindow
-}
-
-function ensureInclusionRules() {
-  if (!props.expression.InclusionRules) {
-    props.expression.InclusionRules = []
-  }
-
-  return props.expression.InclusionRules
-}
 
 function addPrimaryCriteria(type: string) {
   let criteria: Criteria
@@ -407,54 +525,70 @@ function addPrimaryCriteria(type: string) {
     case 'ConditionEra':
       criteria = { ConditionEra: {} }
       break
+
     case 'DrugExposure':
       criteria = { DrugExposure: {} }
       break
+
     case 'DoseEra':
       criteria = { DoseEra: {} }
       break
+
     case 'DeviceExposure':
       criteria = { DeviceExposure: {} }
       break
+
     case 'DrugEra':
       criteria = { DrugEra: {} }
       break
+
     case 'Measurement':
       criteria = { Measurement: {} }
       break
+
     case 'Observation':
       criteria = { Observation: {} }
       break
+
     case 'ObservationPeriod':
       criteria = { ObservationPeriod: {} }
       break
+
     case 'PayerPlanPeriod':
       criteria = { PayerPlanPeriod: {} }
       break
+
     case 'ProcedureOccurrence':
       criteria = { ProcedureOccurrence: {} }
       break
+
     case 'Specimen':
       criteria = { Specimen: {} }
       break
+
     case 'VisitDetail':
       criteria = { VisitDetail: {} }
       break
+
     case 'VisitOccurrence':
       criteria = { VisitOccurrence: {} }
       break
+
     case 'Death':
       criteria = { Death: {} }
       break
+
     case 'ConditionOccurrence':
     default:
-      criteria = { ConditionOccurrence: { First: false } }
+      criteria = {
+        ConditionOccurrence: {
+          First: false,
+        },
+      }
       break
   }
 
-  const primaryCriteria = ensurePrimaryCriteria()
-  const criteriaList = primaryCriteria.CriteriaList ?? (primaryCriteria.CriteriaList = [])
-  criteriaList.push(criteria)
+  expression.value.PrimaryCriteria.CriteriaList.push(criteria)
 }
 
 function createEmptyCriteriaGroup(): CriteriaGroupType {
@@ -466,17 +600,21 @@ function createEmptyCriteriaGroup(): CriteriaGroupType {
 }
 
 function addAdditionalCriteria() {
-  props.expression.AdditionalCriteria = createEmptyCriteriaGroup()
+  expression.value.AdditionalCriteria =
+    createEmptyCriteriaGroup()
 }
 
 function removeAdditionalCriteria() {
-  delete props.expression.AdditionalCriteria
+  delete expression.value.AdditionalCriteria
 }
 
-function removePrimaryCriteria(criteriaToRemove: Criteria) {
-  const primaryCriteria = ensurePrimaryCriteria()
-  const criteriaList = primaryCriteria.CriteriaList ?? (primaryCriteria.CriteriaList = [])
-  primaryCriteria.CriteriaList = criteriaList.filter(criteria => criteria !== criteriaToRemove)
+function removePrimaryCriteria(
+  criteriaToRemove: Criteria,
+) {
+  expression.value.PrimaryCriteria.CriteriaList =
+    expression.value.PrimaryCriteria.CriteriaList.filter(
+      criteria => criteria !== criteriaToRemove,
+    )
 }
 </script>
 

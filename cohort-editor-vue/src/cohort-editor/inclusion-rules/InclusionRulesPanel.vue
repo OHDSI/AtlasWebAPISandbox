@@ -88,7 +88,7 @@ type LimitType = 'First' | 'All' | 'Last'
 interface Props {
   modelValue: InclusionRule[]
   conceptSets: ConceptSetOption[]
-  expressionLimit?: ResultLimit
+  expressionLimit?: ResultLimit | null
 }
 
 const props = defineProps<Props>()

@@ -29,16 +29,6 @@ export function cloneWindow(window: Window): Window {
   }
 }
 
-export function formatWindowSummary(window?: Window, label = 'Window'): string {
-  const { t } = useI18n()
-
-  if (!window) {
-    return `${label}: ${t('common.notSet', 'not set').value}`
-  }
-
-  return formatWindowExpression(window)
-}
-
 export function formatWindowExpression(window?: Window): string {
   const { t } = useI18n()
 

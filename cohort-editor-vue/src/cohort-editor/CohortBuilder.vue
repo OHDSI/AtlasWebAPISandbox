@@ -43,7 +43,6 @@
       <div class="cohort-builder__main-row">
         <div class="cohort-builder__editor-pane">
           <CohortExpressionEditor
-            :key="expressionKey"
             :expression="expression"
             :concept-sets="availableConceptSets"
             @select-concept-set="openConceptSetSelection($event)"
@@ -153,9 +152,7 @@ interface ValidationWarning {
   message: string
 }
 
-const expression = reactive<CohortExpression>({
-  ...createDefaultExpression(),
-})
+const expression = ref<CohortExpression>(createDefaultExpression())
 
 const expressionKey = ref(0)
 
@@ -165,10 +162,10 @@ const showConceptSetSelectionDialog = ref(false)
 const showValidationDialog = ref(false)
 const showJsonPreview = ref(true)
 const selectedConceptSetTarget = shallowRef<ConceptSetSelectionTarget | null>(null)
-const initialSnapshot = JSON.stringify(expression)
+const initialSnapshot = JSON.stringify(expression.value)
 
 const currentConceptSets = computed(() => {
-  return (expression.ConceptSets || [])
+  return (expression.value.ConceptSets || [])
     .filter((conceptSet): conceptSet is { id: number; name: string } => (
       conceptSet.id !== undefined && conceptSet.name !== undefined
     ))
@@ -176,7 +173,7 @@ const currentConceptSets = computed(() => {
 })
 
 const usedConceptSets = computed(() => {
-  const usedIds = findUsedConceptSetIds(expression)
+  const usedIds = findUsedConceptSetIds(expression.value)
   return currentConceptSets.value.filter(conceptSet => usedIds.has(conceptSet.id))
 })
 
@@ -211,15 +208,15 @@ const availableConceptSets = computed(() => {
 const validationWarnings = computed<ValidationWarning[]>(() => {
   const warnings: ValidationWarning[] = []
 
-  if (!expression.Title?.trim()) {
+  if (!expression.value.Title?.trim()) {
     warnings.push({ severity: 'CRITICAL', message: 'Title is required.' })
   }
 
-  if (!expression.PrimaryCriteria?.CriteriaList?.length) {
+  if (!expression.value.PrimaryCriteria?.CriteriaList?.length) {
     warnings.push({ severity: 'WARNING', message: 'No primary criteria have been added yet.' })
   }
 
-  if (!expression.ConceptSets?.length) {
+  if (!expression.value.ConceptSets?.length) {
     warnings.push({ severity: 'INFO', message: 'No concept sets are currently attached.' })
   }
 
@@ -233,8 +230,8 @@ const validationColor = computed<'success' | 'warning' | 'error' | 'info'>(() =>
   return 'success'
 })
 
-const isDirty = computed(() => JSON.stringify(expression) !== initialSnapshot)
-const jsonPreview = computed(() => JSON.stringify(expression, null, 2))
+const isDirty = computed(() => JSON.stringify(expression.value) !== initialSnapshot)
+const jsonPreview = computed(() => JSON.stringify(expression.value, null, 2))
 
 function createDefaultExpression(): CohortExpression {
   return {
@@ -273,8 +270,7 @@ function handleImportJson(jsonString: string) {
       return
     }
 
-    Object.assign(expression, result.data)
-    expressionKey.value++
+    expression.value = result.data
     showJsonDialog.value = false
   } catch (error) {
     alert(`Error importing JSON: ${error instanceof Error ? error.message : String(error)}`)
@@ -282,19 +278,18 @@ function handleImportJson(jsonString: string) {
 }
 
 function exportJson() {
-  const json = JSON.stringify(expression, null, 2)
+  const json = JSON.stringify(expression.value, null, 2)
   const blob = new Blob([json], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `cohort-${expression.Title?.replace(/\s+/g, '-') || 'new'}.json`
+  link.download = `cohort-${expression.value.Title?.replace(/\s+/g, '-') || 'new'}.json`
   link.click()
   URL.revokeObjectURL(url)
 }
 
 function resetExpression() {
-  Object.assign(expression, createDefaultExpression())
-  expressionKey.value++
+  expression.value = createDefaultExpression()
 }
 
 function openConceptSetSelection(target: ConceptSetSelectionTarget | undefined) {
@@ -312,9 +307,9 @@ function handleDeleteConceptSet(conceptSet: { id: number | string; name: string 
   // Clear every reference to this concept set throughout the expression graph
   // before removing it, since we don't know what any observers of the
   // now-dangling id would otherwise do with it.
-  unassignConceptSetId(expression, conceptSetId)
+  unassignConceptSetId(expression.value, conceptSetId)
 
-  expression.ConceptSets = (expression.ConceptSets || []).filter(cs => cs.id !== conceptSetId)
+  expression.value.ConceptSets = (expression.value.ConceptSets || []).filter(cs => cs.id !== conceptSetId)
 }
 
 function nextConceptSetId() {
@@ -336,7 +331,7 @@ function applyConceptSetSelection(conceptSet: { id: number | string; name: strin
       id: nextConceptSetId(),
       name: conceptSet.name,
     }
-    expression.ConceptSets = [...(expression.ConceptSets || []), importedConceptSet]
+    expression.value.ConceptSets = [...(expression.value.ConceptSets || []), importedConceptSet]
     target.targetRef.value = importedConceptSet.id
   } else {
     target.targetRef.value = conceptSet.id as number
