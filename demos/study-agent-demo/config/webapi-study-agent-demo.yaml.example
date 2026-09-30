@@ -1,0 +1,33 @@
+# Merge these settings into a local, ignored WebAPI application YAML.
+# Environment variables in .env are preferred for secrets.
+study-agent:
+  concept-set-search:
+    enabled: ${STUDY_AGENT_CONCEPT_SET_SEARCH_ENABLED:true}
+  cohort-definition:
+    enabled: ${STUDY_AGENT_COHORT_DEFINITION_ENABLED:true}
+  acp:
+    base-url: ${STUDY_AGENT_ACP_BASE_URL:http://127.0.0.1:8765}
+
+datasource:
+  url: ${DATASOURCE_URL}
+  username: ${DATASOURCE_USERNAME}
+  password: ${DATASOURCE_PASSWORD}
+  ohdsi:
+    schema: ${DATASOURCE_OHDSI_SCHEMA:webapi}
+
+security:
+  origin: ${ATLAS_ORIGIN:http://localhost:5173}
+  cors:
+    allowed-origins: ${ATLAS_ORIGIN:http://localhost:5173}
+  auth:
+    db:
+      datasource:
+        url: ${SECURITY_AUTH_DB_DATASOURCE_URL:${DATASOURCE_URL}}
+        username: ${SECURITY_AUTH_DB_DATASOURCE_USERNAME:${DATASOURCE_USERNAME}}
+        password: ${SECURITY_AUTH_DB_DATASOURCE_PASSWORD:${DATASOURCE_PASSWORD}}
+        schema: ${SECURITY_AUTH_DB_DATASOURCE_SCHEMA:webapi}
+
+spring:
+  flyway:
+    user: ${DATASOURCE_USERNAME}
+    password: ${DATASOURCE_PASSWORD}

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "demo": {
+    "name": "study-agent-demo",
+    "description": "Demo profile for Atlas /ohdsi concept-set and cohort-assistance stories.",
+    "status": "source-built-local",
+    "scope": "Local integration demonstration; not a portable production deployment.",
+    "profile": "live-local"
+  },
+  "source_boundary": {
+    "checkpoint_date": "2026-09-29",
+    "documentation_tag": "atlas-ohdsi-cohort-assistance-sprint-2026-09-29-docs",
+    "documentation_commit": "1bcd8fcce6937d37e30b33af83d2d82c43359d73"
+  },
+  "components": {
+    "atlas3": {
+      "repository": "vinci-ohdsi/Atlas3",
+      "worktree": "../../../Atlas3",
+      "branch": "feature/study-agent-demo",
+      "tag": "atlas-ohdsi-cohort-assistance-sprint-2026-09-29-atlas3",
+      "commit": "4c9a0a74b9dbd71b307d5cecba48f5d357bfddfb"
+    },
+    "webapi3": {
+      "repository": "vinci-ohdsi/WebAPI3",
+      "worktree": "../../../WebAPI3",
+      "branch": "feature/study-agent-cohort-defs",
+      "tag": "atlas-ohdsi-cohort-assistance-sprint-2026-09-29-webapi3",
+      "commit": "d286d12f9cc39f6c95c51b2fffd8058836758841"
+    },
+    "study_agent": {
+      "repository": "vinci-ohdsi/StudyAgent",
+      "worktree": "../../../StudyAgent",
+      "branch": "feat/study-agent-demo-implementation",
+      "tag": "atlas-ohdsi-cohort-assistance-sprint-2026-09-29-studyagent",
+      "commit": "eb6f8cf82be57b98421d4c70518d50da65e576aa"
+    }
+  },
+  "runtime": {
+    "atlas_origin": "http://localhost:5173",
+    "webapi_url": "http://localhost:8080/WebAPI",
+    "acp_url": "http://127.0.0.1:8765",
+    "mcp_url": "http://127.0.0.1:8000"
+  },
+  "verification": {
+    "source_pin_check": "python3 scripts/verify_local_profile.py",
+    "browser_boundary_check": "python3 scripts/verify_browser_har.py <exported-har> --atlas-origin http://localhost:5173 --webapi-origin http://localhost:8080"
+  },
+  "known_non_portable_inputs": [
+    "A locally licensed OMOP vocabulary/database",
+    "Local database credentials and Atlas user setup",
+    "Configured MCP/ACP and any required model credentials"
+  ]
+}
