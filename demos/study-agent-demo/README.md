@@ -1,5 +1,10 @@
 # Study Agent (/ohdsi) Atlas 3/WebAPI  demo
 
+## Video of the intended demo in action
+
+This demo uses forked Atlas 3 and WebAPI to  test integration of AI support using a forked version of [Study Agent](https://github.com/OHDSI/StudyAgent)  for cohort and concept set definition creation. This short [video on panopto](https://pitt.hosted.panopto.com/Panopto/Pages/Viewer.aspx?id=1696bc80-59e3-40e6-abc6-b4d40129d912&start=352) illustrates initial functioning work on the concept.
+
+
 ## Quick overview
 
 To run this demo a developer would:
@@ -8,7 +13,7 @@ To run this demo a developer would:
 2. Clone/create sibling worktrees for the three forks at the commits/tags recorded in demo-manifest.local.json.
 3. Create their ignored local StudyAgent/WebAPI configuration, including the phenotype index and credentials.
 4. Start MCP → ACP → WebAPI → Atlas as documented.
-5. Run the scripts to verify the checkpoint pins and, after browser use, the HAR network boundary.
+5. Run the scripts to verify the checkpoint pins and, after browser use, the HTTP archive (HAR) network boundary.
 
 No GitHub workflow is involved in running this local demo. The Sandbox has a generic workflow that validates committed demo-manifest.json files for digest-pinned OCI demos, but this local source-built profile uses demo-manifest.local.json, so it is intentionally outside that workflow.
 
